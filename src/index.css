@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:wght@100..900&family=Raleway:ital,wght@0,100..900;1,100..900&family=Updock&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  font-family: "Inter", sans-serif;
+}
+
+.dm-sans {
+  font-family: "DM Sans", sans-serif;
+}
+
+.raleway {
+  font-family: "Raleway", sans-serif;
+}
+
+.playfair {
+  font-family: "Playfair Display", serif;
+}
+
+
+
+.slick-dots li.slick-active div {
+  background: black !important; /* Active dot color */
+}
+
+
+@keyframes upDown {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(40px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.animated-image {
+  animation: upDown 5s infinite;
+}
+
+.btn1, .btn2 {
+  position: relative; 
+  transition: left 1s ease, right 1s ease; /* Adjust the duration and timing function as needed */
+}
+
+.btn1 {
+  left: 50px;
+}
+
+.btn2 {
+  right: 50px;
+}
+
+.cont:hover .btn1 {
+  left: 0;
+}
+
+.cont:hover .btn2 {
+  right: 0;
+}
+
+/* --------- */
+
+.btn1 {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.5s ease; /* Transition for all properties over 0.5 seconds */
+}
+
+.btn1 p {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.5s ease; /* Transition for all properties over 0.5 seconds */
+}
+
+.btn1 .quick-view {
+  top: 0;
+}
+
+.btn1 .view-icon {
+  top: 48px; /* Adjust as needed */
+}
+
+/* Hover state styles */
+.btn1:hover .quick-view {
+  top: -100%; /* Moves it out of view */
+}
+
+.btn1:hover .view-icon {
+  top: 0; /* Moves it into view */
+}
+
+
+/* ------ */
+
+
+.btn2 {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.5s ease; /* Transition for all properties over 0.5 seconds */
+}
+
+.btn2 p {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.5s ease; /* Transition for all properties over 0.5 seconds */
+}
+
+.btn2 .quick {
+  top: 0;
+}
+
+.btn2 .view {
+  top: 48px; /* Adjust as needed */
+}
+
+/* Hover state styles */
+.btn2:hover .quick {
+  top: -100%; /* Moves it out of view */
+}
+
+.btn2:hover .view {
+  top: 0; /* Moves it into view */
+}
+
+
+.image-container {
+  position: relative;
+  width: fit-content;
+  margin: auto;
+}
+
+.magnifier {
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid #ccc;
+  box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
+  border-radius: 20%;
+  background-repeat: no-repeat;
+}
+
+.detailsImg {
+  display: block;
+  max-width: 100%;
+}
+
