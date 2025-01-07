@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import useAuth from "../../Hooks/useAuth";
@@ -12,6 +12,14 @@ const CreateUser = () => {
     const axiosPublic = useAxiosPublic();
     const [loader, setLoader] = useState(false);
     const navigate = useNavigate();
+
+    const State = location?.state;
+    useEffect(() => {
+        // Only set user location if State is available
+        if (State) {
+        setUserLocation(State);
+        }
+    }, [State, setUserLocation]);
 
     const onSubmit = async (data) => { 
         setLoader(true);
