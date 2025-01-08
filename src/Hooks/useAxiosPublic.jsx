@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosPublic = axios.create({
-    baseURL:'https://server-allaboutcraftbd.vercel.app'
+    baseURL:'https://all-about-back.vercel.app'
 })
 const useAxiosPublic = () => {
     return axiosPublic;
