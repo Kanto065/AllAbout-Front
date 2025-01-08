@@ -31,7 +31,7 @@ export default function Cart() {
       (accumulator, currentValue) =>
         accumulator +
         parseInt(
-          (currentValue?.price -
+          (currentValue?.price - 
             (currentValue?.price / 100) * (100 - currentValue?.discount)) *
             currentValue?.orderedQuantity
         ),
@@ -78,17 +78,17 @@ export default function Cart() {
           <div className="w-full bg-white space-y-7 p-8">
             <h1 className="text-2xl font-bold">Your Cart</h1>
             {cart?.map((product, idx) => (
-            product.quantity > 0 ? (
-              <CartItem key={idx} product={product} reload={refetch} />
-            ) : (
-              <CartItem
-                key={idx}
-                product={product}
-                reload={refetch}
-                message={product.quantity > 0 ? null : `${product.name} is currently out of stock.`}
-              />
-            )
-          ))}
+              product.quantity > 0 ? (
+                <CartItem key={idx} product={product} reload={refetch} />
+              ) : (
+                <CartItem
+                  key={idx}
+                  product={product}
+                  reload={refetch}
+                  message={product.quantity > 0 ? null : `${product.name} is currently out of stock.`}
+                />
+              )
+            ))}
             {cart?.length === 0 && (
               <div className="flex items-center justify-center">
                 <img
@@ -170,17 +170,11 @@ export default function Cart() {
       {/* Modal */}
       <div
         onClick={() => setOpenModal(false)}
-        className={`fixed z-[300] w-screen ${
-          openModal ? "visible opacity-100" : "invisible opacity-0"
-        } inset-0 grid place-items-center bg-black/20 backdrop-blur-sm duration-100`}
+        className={`fixed z-[300] w-screen ${openModal ? "visible opacity-100" : "invisible opacity-0"} inset-0 grid place-items-center bg-black/20 backdrop-blur-sm duration-100`}
       >
         <div
           onClick={(e_) => e_.stopPropagation()}
-          className={`absolute max-w-2xl w-full rounded-lg bg-white p-6 drop-shadow-lg ${
-            openModal
-              ? "opacity-1 duration-300"
-              : "scale-110 opacity-0 duration-150"
-          }`}
+          className={`absolute max-w-2xl w-full rounded-lg bg-white p-6 drop-shadow-lg ${openModal ? "opacity-1 duration-300" : "scale-110 opacity-0 duration-150"}`}
         >
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
             <svg
@@ -211,7 +205,6 @@ export default function Cart() {
                     required
                   />
                 </div>
-                
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email</label>
                   <input

@@ -95,6 +95,11 @@ const SubCategories = () => {
       </Helmet>
       <div className="flex justify-between">
         <h3 className="text-3xl font-medium">All Sub Categories</h3>
+        <img
+                            className="h-12 md:h-16 w-12 md:w-16 rounded-full mx-auto" // Adjusted image size
+                            src={mCategory?.image}
+                            alt=""
+                        />
         <button
           onClick={() => setAdd(true)}
           className={`text-white text-lg bg-[#C480CF] hover:bg-[#cb63db] py-1 px-4 rounded-[30px] font-bold duration-500 raleway ${
