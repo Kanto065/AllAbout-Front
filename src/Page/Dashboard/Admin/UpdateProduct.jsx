@@ -87,7 +87,7 @@ export default function UpdateProduct() {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            return response.data.url;
+            return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`;
         } catch (error) {
             throw new Error('File upload failed');
         }
