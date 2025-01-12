@@ -121,7 +121,15 @@ const Navbar = () => {
                   }}
                   to={`products/${product?.name}`}
                 >
-                  {product?.name}
+                  {/* Product Image */}
+                  <img
+                    src={product?.images?.[0]} // Assuming `image` is the property containing the image URL
+                    alt={product?.name}
+                    className="w-10 h-10 object-cover rounded-md mr-2" // Adjust as necessary
+                  />
+                  
+                  {/* Product Name */}
+                  <span>{product?.name}</span>
                 </Link>
               ))}
           </div>

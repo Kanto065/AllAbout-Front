@@ -65,12 +65,15 @@ export default function Wish({ id }) {
     }
 
     return (
-        <div onClick={handleWish} className="text-red-600 shadow-[#8d8d8d] shadow p-1 rounded-full text-xl md:text-2xl">
-            {wish?.find(item => item?._id === id) ?
-                <MdOutlineFavorite />
-                :
-                <MdFavoriteBorder />
-            }
-        </div>
+        <div
+        onClick={handleWish}
+        className="text-red-600 shadow-[#8d8d8d] shadow p-2 rounded-full text-lg md:text-xl flex items-center justify-center"
+    >
+        {wish?.find(item => item?._id === id) ? (
+            <MdOutlineFavorite size={24} />
+        ) : (
+            <MdFavoriteBorder size={24} />
+        )}
+    </div>
     )
 }

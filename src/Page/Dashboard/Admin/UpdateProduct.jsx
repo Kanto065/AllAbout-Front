@@ -32,6 +32,30 @@ export default function UpdateProduct() {
     const navigate = useNavigate();
     const [selectedCategory, setSelectedCategory] = useState([]);
     const [selectedSubCategory, setSelectedSubCategory] = useState([]);
+    const [variantInputs, setVariantInputs] = useState([
+        { name: '', image: null }, // Initial input
+    ]);
+
+    const handleVariantNameChange = (index, value) => {
+        const updatedVariants = [...variantInputs];
+        updatedVariants[index].name = value;
+        setVariantInputs(updatedVariants);
+    };
+
+    const handleVariantImageChange = (index, file) => {
+        const updatedVariants = [...variantInputs];
+        updatedVariants[index].image = file;
+        setVariantInputs(updatedVariants);
+    };
+
+    const handleAddVariantInput = () => {
+        setVariantInputs([...variantInputs, { name: '', image: null }]);
+    };
+
+    const handleRemoveVariantInput = (index) => {
+        const updatedVariants = variantInputs.filter((_, i) => i !== index);
+        setVariantInputs(updatedVariants);
+    };
 
     useEffect(()=>{
         setSelectedCategory(
@@ -87,7 +111,7 @@ export default function UpdateProduct() {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            return response.data.url;
+            return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`;
         } catch (error) {
             throw new Error('File upload failed');
         }
@@ -111,6 +135,19 @@ export default function UpdateProduct() {
                 }
             }
 
+            const uploadedVariantImages = await Promise.all(
+                variantInputs.map((variant) =>
+                    variant.image ? uploadImage(variant.image) : null
+                )
+            );
+
+            const variants = variantInputs.reduce((acc, variant, index) => {
+                if (variant.name && uploadedVariantImages[index]) {
+                    acc[variant.name] = uploadedVariantImages[index];
+                }
+                return acc;
+            }, {});
+
             // Create updated product with uploaded file URLs
             const updatedProduct = {
                 name,
@@ -121,6 +158,7 @@ export default function UpdateProduct() {
                 subCategory,
                 description,
                 details,
+                variants,
                 images: uploadedImageURLs,
                 discount: parseFloat(discount),
             };
@@ -267,18 +305,65 @@ export default function UpdateProduct() {
                         />
                     </div>
                 </div>
-                    <div className="">
-                        <label className="text-lg font-medium">Description:</label><br />
-                        <textarea
-                            className="p-2 rounded bg-gray-200 w-full"
-                            name="description"
-                            rows={3}
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            required
-                            placeholder='Enter The Product Description'
-                        />
-                    </div>
+                <div className="">
+                    <label className="text-lg font-medium">Description:</label><br />
+                    <textarea
+                        className="p-2 rounded bg-gray-200 w-full"
+                        name="description"
+                        rows={3}
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        required
+                        placeholder='Enter The Product Description'
+                    />
+                </div>
+
+                <div className="py-5">
+                    {/* Add Variant Button */}
+                    <button
+                        type="button"
+                        className="mb-4 px-4 py-2 bg-green-500 text-white rounded"
+                        onClick={handleAddVariantInput}
+                    >
+                        {variantInputs.length === 0 ? 'Add Product Variant' : 'Add Another Product Variant'}
+                    </button>
+
+                    {/* Render Variant Inputs Only If Present */}
+                    {variantInputs.map((variant, index) => (
+                        <div key={index} className="flex flex-col lg:flex-row items-center mb-4">
+                            <div className="lg:w-1/2 pr-2">
+                                <label className="text-lg font-medium">Variant Name:</label>
+                                <input
+                                    className="p-2 rounded bg-gray-200 w-full"
+                                    type="text"
+                                    value={variant.name}
+                                    onChange={(e) => handleVariantNameChange(index, e.target.value)}
+                                    placeholder="Enter Variant Name"
+                                />
+                            </div>
+                            <div className="lg:w-1/2 pl-2 flex items-center">
+                                <div>
+                                    <label className="text-lg font-medium">Variant Image:</label>
+                                    <div className="flex flex-col lg:flex-row items-center">
+                                        <input
+                                            className="p-2 rounded bg-gray-200 w-full"
+                                            type="file"
+                                            onChange={(e) => handleVariantImageChange(index, e.target.files[0])}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="ml-4 px-4 py-2 bg-red-500 text-white rounded"
+                                            onClick={() => handleRemoveVariantInput(index)}
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>                               
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
                 <div>
                     <label className="text-lg font-medium">Product Images: ({images?.length})</label><br />
                     <input

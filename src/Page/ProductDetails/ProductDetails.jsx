@@ -92,7 +92,8 @@ export default function ProductDetails() {
         (prevIndex - 1 + productData?.images.length) %
         productData?.images.length
     );
-    setModalContent(productData?.images[prevIndex]);
+
+    setModalContent(productData?.images[prevIndex]); 
   };
 
   const handleShare = () => {

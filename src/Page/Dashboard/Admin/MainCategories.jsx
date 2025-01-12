@@ -29,7 +29,7 @@ const MainCategories = () => {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            return response.data.url; // Adjust according to your server response
+            return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`; // Adjust according to your server response
         } catch (error) {
             throw new Error('File upload failed');
         }
