@@ -15,6 +15,7 @@ import useDatabaseUser from "../../Hooks/useDatabaseUser";
 import Swal from "sweetalert2";
 import Wish from "../../Components/Icons/Wish";
 import SingleOrder from "../../Components/PopUp/SingleOrder";
+import { FaStar } from "react-icons/fa";
 
 export default function ProductDetails() {
   const { user } = useAuth();
@@ -30,6 +31,12 @@ export default function ProductDetails() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(null);
+  const [reviewText, setReviewText] = useState("");
+  const [reviews, setReviews] = useState([]);
+  const [reviewImage, setReviewImage] = useState(null); // State for the review image
+  const [averageRating, setAverageRating] = useState(0); // State for average rating
 
   // Function to open modal
   const openModal = (media, index) => {
@@ -48,7 +55,23 @@ export default function ProductDetails() {
     axiosPublic
       .get(`/products/${productName}`)
       .then((data) => setProductData(data?.data));
+
+    // Fetch reviews for the product
+    axiosPublic.get(`/reviews/${productName}`).then((data) => {
+      setReviews(data?.data || []);
+      calculateAverageRating(data?.data || []);
+    });
   }, [axiosPublic, productName]);
+
+  const calculateAverageRating = (reviews) => {
+    if (reviews.length === 0) {
+      setAverageRating(0);
+      return;
+    }
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    const average = totalRating / reviews.length;
+    setAverageRating(average);
+  };
 
   useEffect(() => {
     const sanitizedHTML = DOMPurify.sanitize(productData?.details);
@@ -69,9 +92,8 @@ export default function ProductDetails() {
         (prevIndex - 1 + productData?.images.length) %
         productData?.images.length
     );
-    setModalContent(productData?.images[prevIndex]); 
+    setModalContent(productData?.images[prevIndex]);
   };
-  
 
   const handleShare = () => {
     if (navigator.share) {
@@ -137,14 +159,58 @@ export default function ProductDetails() {
     }
   };
 
-  const isVideo = (url) =>
-    url?.endsWith(".mp4") || 
-    url?.endsWith(".webm") || 
-    url?.endsWith(".ogg") || 
-    url?.endsWith(".mov") || 
-    url?.endsWith(".avi") || 
-    url?.endsWith(".mkv");
+  const handleReviewSubmit = async () => {
+    if (!user) {
+      navigate("/login", { state: { from: location } });
+      return;
+    }
 
+    const formData = new FormData();
+    formData.append("productId", productData?._id);
+    formData.append("email", databaseUser?.email);
+    formData.append("rating", rating);
+    formData.append("reviewText", reviewText);
+    if (reviewImage) {
+      formData.append("reviewImage", reviewImage);
+    }
+
+    try {
+      const response = await axiosPublic.post(`/reviews`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      if (response?.data?.insertedId) {
+        Swal.fire({
+          icon: "success",
+          title: "Review submitted successfully",
+        });
+        setReviews([...reviews, { rating, reviewText, reviewImage }]);
+        setRating(0);
+        setReviewText("");
+        setReviewImage(null);
+        calculateAverageRating([...reviews, { rating, reviewText, reviewImage }]);
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Failed to submit review",
+        });
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Error submitting review",
+      });
+    }
+  };
+
+  const isVideo = (url) =>
+    url?.endsWith(".mp4") ||
+    url?.endsWith(".webm") ||
+    url?.endsWith(".ogg") ||
+    url?.endsWith(".mov") ||
+    url?.endsWith(".avi") ||
+    url?.endsWith(".mkv");
 
   if (!productData) {
     // Return a loading state while product data is being fetched
@@ -195,8 +261,6 @@ export default function ProductDetails() {
             </button>
           </div>
 
-          
-
           {/* Thumbnails */}
           <div className="flex justify-center items-center space-x-2 overflow-x-auto">
             {productData?.images?.map((media, idx) => (
@@ -235,7 +299,7 @@ export default function ProductDetails() {
           <h1 className="text-2xl md:text-3xl font-bold mb-4">
             {productData?.name}
           </h1>
-          {/* <p className="font-medium text-lg">Origin: {productData?.origin}</p> */}
+
           {/* Pricing and Discount */}
           <div className="flex items-center gap-2">
             <span className="text-2xl md:text-3xl text-red-600 font-bold">
@@ -322,6 +386,85 @@ export default function ProductDetails() {
       <div className="mt-6">
         <h2 className="text-lg font-medium mb-2">Product Details</h2>
         {details}
+      </div>
+
+      {/* Product Reviews */}
+      <div className="mt-8">
+        <h2 className="text-lg font-medium mb-4">Product Reviews</h2>
+        <div className="mb-6">
+          <div className="flex items-center space-x-1 mb-4">
+            <span className="font-medium text-lg">Average Rating:</span>
+            <div className="flex items-center space-x-1">
+              {[...Array(5)].map((_, i) => (
+                <FaStar
+                  key={i}
+                  color={i < averageRating ? "#ffc107" : "#e4e5e9"}
+                />
+              ))}
+            </div>
+            <span className="text-lg">{averageRating.toFixed(1)}</span>
+          </div>
+          {reviews.length > 0 ? (
+            reviews.map((review, index) => (
+              <div key={index} className="border-b pb-4 mb-4">
+                <div className="flex items-center space-x-1">
+                  {[...Array(5)].map((_, i) => (
+                    <FaStar
+                      key={i}
+                      color={i < review.rating ? "#ffc107" : "#e4e5e9"}
+                    />
+                  ))}
+                </div>
+                <p className="mt-2 text-gray-700">{review.reviewText}</p>
+                {review.reviewImage && (
+                  <img
+                    src={review.reviewImage}
+                    alt="Review"
+                    className="mt-2 w-32 h-32 object-cover"
+                  />
+                )}
+              </div>
+            ))
+          ) : (
+            <p>No reviews yet. Be the first to review!</p>
+          )}
+        </div>
+
+        {/* Review Form */}
+        <div className="mt-6">
+          <h3 className="text-lg font-medium mb-2">Submit Your Review</h3>
+          <div className="flex items-center space-x-2">
+            {[...Array(5)].map((_, i) => (
+              <FaStar
+                key={i}
+                color={i < hover || i < rating ? "#ffc107" : "#e4e5e9"}
+                onClick={() => setRating(i + 1)}
+                onMouseEnter={() => setHover(i + 1)}
+                onMouseLeave={() => setHover(null)}
+                className="cursor-pointer"
+              />
+            ))}
+          </div>
+          <textarea
+            value={reviewText}
+            onChange={(e) => setReviewText(e.target.value)}
+            placeholder="Write your review here..."
+            className="mt-2 p-3 border w-full rounded-md"
+            rows="4"
+          />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setReviewImage(e.target.files[0])}
+            className="mt-2 p-3 border w-full rounded-md"
+          />
+          <button
+            onClick={handleReviewSubmit}
+            className="mt-4 px-6 py-2 bg-[#7dd67d] text-white rounded-lg"
+          >
+            Submit Review
+          </button>
+        </div>
       </div>
     </div>
   );
