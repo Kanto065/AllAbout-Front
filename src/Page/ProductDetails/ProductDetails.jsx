@@ -93,7 +93,7 @@ export default function ProductDetails() {
         productData?.images.length
     );
 
-    setModalContent(productData?.images[prevIndex]); 
+    setModalContent(productData?.images[prevIndex]);
   };
 
   const handleShare = () => {
@@ -160,6 +160,27 @@ export default function ProductDetails() {
     }
   };
 
+  const handleImageChange = (event) => {
+    const files = Array.from(event.target.files);
+    setReviewImage(files[0]); // Set the first selected file as the review image
+  };
+
+  const uploadImage = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await axiosPublic.post('https://server.allaboutcraftbd.com/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`; // Adjust according to your server response
+    } catch (error) {
+      throw new Error('File upload failed');
+    }
+  };
+
   const handleReviewSubmit = async () => {
     if (!user) {
       navigate("/login", { state: { from: location } });
@@ -167,30 +188,44 @@ export default function ProductDetails() {
     }
 
     const formData = new FormData();
-    formData.append("productId", productData?._id);
-    formData.append("email", databaseUser?.email);
     formData.append("rating", rating);
-    formData.append("reviewText", reviewText);
+    formData.append("comment", reviewText);
+
+    let imageURL = null;
     if (reviewImage) {
-      formData.append("reviewImage", reviewImage);
+      try {
+        imageURL = await uploadImage(reviewImage);
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error uploading image",
+        });
+        return;
+      }
     }
 
+    const reviewData = {
+      rating,
+      comment: reviewText,
+      image: imageURL,
+    };
+
+    console.log("Review Data:", reviewData); // Log the review data being sent
+
     try {
-      const response = await axiosPublic.post(`/reviews`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const response = await axiosPublic.post(`/products/${productData?._id}/reviews`, reviewData);
+      console.log("Review Submission Response:", response); // Log the response from the server
       if (response?.data?.insertedId) {
         Swal.fire({
           icon: "success",
           title: "Review submitted successfully",
         });
-        setReviews([...reviews, { rating, reviewText, reviewImage }]);
+        setReviews([...reviews, reviewData]);
         setRating(0);
         setReviewText("");
         setReviewImage(null);
-        calculateAverageRating([...reviews, { rating, reviewText, reviewImage }]);
+        calculateAverageRating([...reviews, reviewData]);
       } else {
         Swal.fire({
           icon: "error",
@@ -198,6 +233,7 @@ export default function ProductDetails() {
         });
       }
     } catch (err) {
+      console.error("Error submitting review:", err); // Log the error
       Swal.fire({
         icon: "error",
         title: "Error submitting review",
@@ -416,10 +452,10 @@ export default function ProductDetails() {
                     />
                   ))}
                 </div>
-                <p className="mt-2 text-gray-700">{review.reviewText}</p>
-                {review.reviewImage && (
+                <p className="mt-2 text-gray-700">{review.comment}</p>
+                {review.image && (
                   <img
-                    src={review.reviewImage}
+                    src={review.image}
                     alt="Review"
                     className="mt-2 w-32 h-32 object-cover"
                   />
@@ -456,7 +492,7 @@ export default function ProductDetails() {
           <input
             type="file"
             accept="image/*"
-            onChange={(e) => setReviewImage(e.target.files[0])}
+            onChange={handleImageChange}
             className="mt-2 p-3 border w-full rounded-md"
           />
           <button
