@@ -83,6 +83,7 @@ export default function UpdateProduct() {
                 setType(product?.category || "");
                 setSubCategory(product?.subCategory || "");
                 setDescription(product?.description || "");
+                setVariantInputs(product?.variants ? Object.entries(product.variants).map(([name, image]) => ({ name, image })) : []);
                 setDetails(product?.details || "");
                 setImages(product?.images.map(img => ({ name: img, url: img })) || []);
                 setDiscount(product?.discount || 0);
@@ -348,20 +349,30 @@ export default function UpdateProduct() {
                                         <input
                                             className="p-2 rounded bg-gray-200 w-full"
                                             type="file"
-                                            onChange={(e) => handleVariantImageChange(index, e.target.files[0])}
+                                            onChange={(e) => handleVariantImageChange(index, e.target.files[0])} // Handle image upload
                                         />
                                         <button
                                             type="button"
                                             className="ml-4 px-4 py-2 bg-red-500 text-white rounded"
-                                            onClick={() => handleRemoveVariantInput(index)}
+                                            onClick={() => handleRemoveVariantInput(index)} // Handle removing a variant input
                                         >
                                             Delete
                                         </button>
                                     </div>
-                                </div>                               
+                                </div>
                             </div>
                         </div>
                     ))}
+                    {variantInputs?.length > 0 && (
+                        <div>
+                            {variantInputs.map((variant, index) => (
+                                <div key={index}>
+                                    {/* Display the selected file name or URL */}
+                                    <div>File selected: {variant.image || 'No file selected'}</div> 
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div>
