@@ -10,6 +10,7 @@ import { TiDelete } from "react-icons/ti";
 import useDatabaseUser from "../../../Hooks/useDatabaseUser";
 import useCart from "../../../Hooks/useCart";
 
+  
 export default function WishItem({ product, reload }) {
   const axiosPublic = useAxiosPublic();
   const { user } = useAuth();
