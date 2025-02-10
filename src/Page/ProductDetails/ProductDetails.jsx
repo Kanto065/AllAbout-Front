@@ -135,8 +135,8 @@ export default function ProductDetails() {
         refetch();
       } else if (response?.data?.status) {
         Swal.fire({
-          title: "You already added this on your cart successfully!",
-          icon: "info",
+          title: "Another Product added to cart successfully!",
+          icon: "success",
           showCancelButton: true,
           confirmButtonColor: "#3085d6",
           cancelButtonColor: "#d33",
