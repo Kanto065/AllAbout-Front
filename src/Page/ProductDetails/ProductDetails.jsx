@@ -50,22 +50,6 @@ const ProductPage = () => {
     });
   }, [axiosPublic, productName]);
 
-    const uploadImage = async (file) => {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-          const response = await axios.post('https://server.allaboutcraftbd.com/upload', formData, {
-              headers: {
-                  'Content-Type': 'multipart/form-data',
-              },
-          });
-          return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`; // Adjust according to your server response
-      } catch (error) {
-          throw new Error('File upload failed');
-      }
-  };
-
   const calculateAverageRating = (reviews) => {
     if (reviews.length === 0) {
       setAverageRating(0);
