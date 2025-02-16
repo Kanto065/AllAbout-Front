@@ -35,7 +35,7 @@ export default function ProductDetails() {
   const [hover, setHover] = useState(null);
   const [reviewText, setReviewText] = useState("");
   const [reviews, setReviews] = useState([]);
-  const [reviewImage, setReviewImage] = useState(null); // State for the review image
+  const [reviewImageUrl, setreviewImageUrl] = useState(null); // State for the review image
   const [averageRating, setAverageRating] = useState(0); // State for average rating
 
   // Function to open modal
@@ -62,6 +62,22 @@ export default function ProductDetails() {
       calculateAverageRating(data?.data || []);
     });
   }, [axiosPublic, productName]);
+
+    const uploadImage = async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+          const response = await axios.post('https://server.allaboutcraftbd.com/upload', formData, {
+              headers: {
+                  'Content-Type': 'multipart/form-data',
+              },
+          });
+          return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`; // Adjust according to your server response
+      } catch (error) {
+          throw new Error('File upload failed');
+      }
+  };
 
   const calculateAverageRating = (reviews) => {
     if (reviews.length === 0) {
@@ -92,12 +108,7 @@ export default function ProductDetails() {
         (prevIndex - 1 + productData?.images.length) %
         productData?.images.length
     );
-//<<<<<<< HEAD
     setModalContent(productData?.images[prevIndex]);
-//=======
-
-    setModalContent(productData?.images[prevIndex]); 
-//>>>>>>> 0a840ee25dc833e2f8d34ea655c4921daf3fcecf
   };
 
   const handleShare = () => {
@@ -175,8 +186,8 @@ export default function ProductDetails() {
     formData.append("email", databaseUser?.email);
     formData.append("rating", rating);
     formData.append("reviewText", reviewText);
-    if (reviewImage) {
-      formData.append("reviewImage", reviewImage);
+    if (reviewImageUrl) {
+      formData.append("reviewImageUrl", reviewImageUrl);
     }
 
     try {
@@ -190,11 +201,11 @@ export default function ProductDetails() {
           icon: "success",
           title: "Review submitted successfully",
         });
-        setReviews([...reviews, { rating, reviewText, reviewImage }]);
+        setReviews([...reviews, { rating, reviewText, reviewImageUrl }]);
         setRating(0);
         setReviewText("");
-        setReviewImage(null);
-        calculateAverageRating([...reviews, { rating, reviewText, reviewImage }]);
+        setreviewImageUrl(null);
+        calculateAverageRating([...reviews, { rating, reviewText, reviewImageUrl }]);
       } else {
         Swal.fire({
           icon: "error",
@@ -421,9 +432,9 @@ export default function ProductDetails() {
                   ))}
                 </div>
                 <p className="mt-2 text-gray-700">{review.reviewText}</p>
-                {review.reviewImage && (
+                {review.reviewImageUrl && (
                   <img
-                    src={review.reviewImage}
+                    src={review.reviewImageUrl}
                     alt="Review"
                     className="mt-2 w-32 h-32 object-cover"
                   />
@@ -460,7 +471,7 @@ export default function ProductDetails() {
           <input
             type="file"
             accept="image/*"
-            onChange={(e) => setReviewImage(e.target.files[0])}
+            onChange={(e) => setreviewImageUrl(e.target.files[0])}
             className="mt-2 p-3 border w-full rounded-md"
           />
           <button
