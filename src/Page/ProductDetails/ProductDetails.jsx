@@ -197,7 +197,7 @@ const ProductPage = () => {
     console.log("Review Data:", reviewData); // Log the review data being sent
 
     try {
-      const response = await axiosPublic.post(`/products/${productData?._id}/reviews`, reviewData);
+      const response = await axiosPublic.post(`/reviews/${productData?._id}`, reviewData);
       console.log("Review Submission Response:", response); // Log the response from the server
       if (response?.data?.insertedId) {
         Swal.fire({
