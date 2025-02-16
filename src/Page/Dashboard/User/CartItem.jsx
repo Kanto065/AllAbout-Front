@@ -3,18 +3,36 @@ import useAxiosPublic from "../../../Hooks/useAxiosPublic";
 import Swal from "sweetalert2";
 import { MdDelete } from "react-icons/md";
 import useDatabaseUser from "../../../Hooks/useDatabaseUser";
+import { FaStar } from "react-icons/fa";
 
 export default function CartItem({ product, reload, message }) {
   const [databaseUser] = useDatabaseUser();
   const axiosPublic = useAxiosPublic();
   const [addQuantity, setAddQuantity] = useState(product?.orderedQuantity);
   const [databaseProduct, setDatabaseProduct] = useState({});
+  const [reviews, setReviews] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
 
   useEffect(() => {
     axiosPublic
       .get(`/products/${product?.name}`)
       .then((data) => setDatabaseProduct(data?.data));
+
+    axiosPublic.get(`/reviews/${product?.name}`).then((data) => {
+      setReviews(data?.data || []);
+      calculateAverageRating(data?.data || []);
+    });
   }, [product, axiosPublic]);
+
+  const calculateAverageRating = (reviews) => {
+    if (reviews.length === 0) {
+      setAverageRating(0);
+      return;
+    }
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    const average = totalRating / reviews.length;
+    setAverageRating(average);
+  };
 
   const handleCart = async (x) => {
     const cart = {
@@ -125,7 +143,8 @@ export default function CartItem({ product, reload, message }) {
           )?.toFixed(2)}
           ৳
         </p>
-        <p className="text-gray-600">P_Code: {product?.code}</p>
+
+        <p className="text-gray-600">Product Variant {product?.variant}</p>
         <div className="w-full flex justify-between">
           <div className="flex justify-start items-center space-x-5">
             <button
@@ -158,6 +177,21 @@ export default function CartItem({ product, reload, message }) {
           >
             <MdDelete className="mr-2"></MdDelete> Delete
           </button>
+        </div>
+
+        <div className="mt-4">
+          <div className="flex items-center space-x-1">
+            <span className="font-medium text-lg">Average Rating:</span>
+            <div className="flex items-center space-x-1">
+              {[...Array(5)].map((_, i) => (
+                <FaStar
+                  key={i}
+                  color={i < averageRating ? "#ffc107" : "#e4e5e9"}
+                />
+              ))}
+            </div>
+            <span className="text-lg">{averageRating.toFixed(1)}</span>
+          </div>
         </div>
       </div>
     </div>
