@@ -144,7 +144,7 @@ export default function CartItem({ product, reload, message }) {
           ৳
         </p>
 
-        <p className="text-gray-600">P_Code: {product?.code}</p>
+        <p className="text-gray-600">Product Variant {product?.variant}</p>
         <div className="w-full flex justify-between">
           <div className="flex justify-start items-center space-x-5">
             <button

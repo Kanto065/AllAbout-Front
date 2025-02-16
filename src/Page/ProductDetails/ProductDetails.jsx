@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Link,
   Navigate,
@@ -17,46 +17,33 @@ import Wish from "../../Components/Icons/Wish";
 import SingleOrder from "../../Components/PopUp/SingleOrder";
 import { FaStar } from "react-icons/fa";
 
-export default function ProductDetails() {
+const ProductPage = () => {
   const { user } = useAuth();
   const axiosPublic = useAxiosPublic();
   const [databaseUser, refetch] = useDatabaseUser();
   const [productData, setProductData] = useState(null);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0); // Track the index of the selected image
-  const [orderedQuantity, setOrderedQuantity] = useState(1); // Default quantity of 1
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [orderedQuantity, setOrderedQuantity] = useState(1);
   const [details, setDetails] = useState(null);
-  const { name: productName } = useParams(); // Destructure product name from params
-  const location = useLocation()?.pathname;
-  const navigate = useNavigate();
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalContent, setModalContent] = useState(null);
+  const [selectedColor, setSelectedColor] = useState("Grey");
+  const [selectedSize, setSelectedSize] = useState(34);
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(null);
   const [reviewText, setReviewText] = useState("");
   const [reviews, setReviews] = useState([]);
-  const [reviewImageUrl, setreviewImageUrl] = useState(null); // State for the review image
-  const [averageRating, setAverageRating] = useState(0); // State for average rating
+  const [reviewImage, setReviewImage] = useState(null);
+  const [averageRating, setAverageRating] = useState(0);
+  const { name: productName } = useParams();
+  const location = useLocation()?.pathname;
+  const navigate = useNavigate();
 
-  // Function to open modal
-  const openModal = (media, index) => {
-    setModalContent(media); // Set the selected media in modal
-    setSelectedImageIndex(index); // Set the index of the selected image/video
-    setIsModalOpen(true); // Open the modal
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setModalContent(null);
-  };
-
+  const colors = ["Grey", "Green", "Pink", "Yellow", "Blue"];
+  const sizes = [34, 36, 38, 40, 42, 44, 46, 48, 50];
   useEffect(() => {
-    // Fetch products from the JSON file
     axiosPublic
       .get(`/products/${productName}`)
       .then((data) => setProductData(data?.data));
 
-    // Fetch reviews for the product
     axiosPublic.get(`/reviews/${productName}`).then((data) => {
       setReviews(data?.data || []);
       calculateAverageRating(data?.data || []);
@@ -99,7 +86,6 @@ export default function ProductDetails() {
     setSelectedImageIndex(
       (prevIndex) => (prevIndex + 1) % productData?.images.length
     );
-    setModalContent(productData?.images[nextIndex]); // Update the modal content
   };
 
   const handlePrevImage = () => {
@@ -108,7 +94,6 @@ export default function ProductDetails() {
         (prevIndex - 1 + productData?.images.length) %
         productData?.images.length
     );
-    setModalContent(productData?.images[prevIndex]);
   };
 
   const handleShare = () => {
@@ -128,7 +113,6 @@ export default function ProductDetails() {
 
   const handleCart = async () => {
     if (!user) {
-      // Redirect the user to login using navigate
       navigate("/login", { state: { from: location } });
       return;
     }
@@ -175,6 +159,27 @@ export default function ProductDetails() {
     }
   };
 
+  const handleImageChange = (event) => {
+    const files = Array.from(event.target.files);
+    setReviewImage(files[0]); // Set the first selected file as the review image
+  };
+
+  const uploadImage = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await axiosPublic.post('https://server.allaboutcraftbd.com/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`; // Adjust according to your server response
+    } catch (error) {
+      throw new Error('File upload failed');
+    }
+  };
+
   const handleReviewSubmit = async () => {
     if (!user) {
       navigate("/login", { state: { from: location } });
@@ -182,30 +187,44 @@ export default function ProductDetails() {
     }
 
     const formData = new FormData();
-    formData.append("productId", productData?._id);
-    formData.append("email", databaseUser?.email);
     formData.append("rating", rating);
-    formData.append("reviewText", reviewText);
-    if (reviewImageUrl) {
-      formData.append("reviewImageUrl", reviewImageUrl);
+    formData.append("comment", reviewText);
+
+    let imageURL = null;
+    if (reviewImage) {
+      try {
+        imageURL = await uploadImage(reviewImage);
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error uploading image",
+        });
+        return;
+      }
     }
 
+    const reviewData = {
+      rating,
+      comment: reviewText,
+      image: imageURL,
+    };
+
+    console.log("Review Data:", reviewData); // Log the review data being sent
+
     try {
-      const response = await axiosPublic.post(`/reviews`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const response = await axiosPublic.post(`/products/${productData?._id}/reviews`, reviewData);
+      console.log("Review Submission Response:", response); // Log the response from the server
       if (response?.data?.insertedId) {
         Swal.fire({
           icon: "success",
           title: "Review submitted successfully",
         });
-        setReviews([...reviews, { rating, reviewText, reviewImageUrl }]);
+        setReviews([...reviews, reviewData]);
         setRating(0);
         setReviewText("");
-        setreviewImageUrl(null);
-        calculateAverageRating([...reviews, { rating, reviewText, reviewImageUrl }]);
+        setReviewImage(null);
+        calculateAverageRating([...reviews, reviewData]);
       } else {
         Swal.fire({
           icon: "error",
@@ -213,6 +232,7 @@ export default function ProductDetails() {
         });
       }
     } catch (err) {
+      console.error("Error submitting review:", err); // Log the error
       Swal.fire({
         icon: "error",
         title: "Error submitting review",
@@ -229,7 +249,6 @@ export default function ProductDetails() {
     url?.endsWith(".mkv");
 
   if (!productData) {
-    // Return a loading state while product data is being fetched
     return (
       <div className="max-w-[95%] 2xl:max-w-7xl mx-auto pt-32 pb-10">
         Loading...
@@ -242,7 +261,6 @@ export default function ProductDetails() {
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Left - Product Images */}
         <div className="flex-1 w-full mx-auto">
-          {/* Main selected image */}
           <div className="relative rounded-lg overflow-hidden bg-white mb-4 lg:w-10/12 mx-auto">
             {isVideo(productData?.images[selectedImageIndex]) ? (
               <video
@@ -262,7 +280,6 @@ export default function ProductDetails() {
                 className="w-full min-h-[400px] h-full object-contain"
               />
             )}
-            {/* Forward and Backward buttons */}
             <button
               onClick={handlePrevImage}
               className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
@@ -277,9 +294,8 @@ export default function ProductDetails() {
             </button>
           </div>
 
-          {/* Thumbnails */}
           <div className="flex justify-center items-center space-x-2 overflow-x-auto">
-            {productData?.images?.map((media, idx) => (
+            {productData?.images?.map((media, idx) =>
               isVideo(media) ? (
                 <video
                   key={idx}
@@ -305,18 +321,16 @@ export default function ProductDetails() {
                   onClick={() => setSelectedImageIndex(idx)}
                 />
               )
-            ))}
+            )}
           </div>
         </div>
 
         {/* Right - Product Details */}
         <div className="flex-1">
-          {/* Product Name */}
           <h1 className="text-2xl md:text-3xl font-bold mb-4">
             {productData?.name}
           </h1>
 
-          {/* Pricing and Discount */}
           <div className="flex items-center gap-2">
             <span className="text-2xl md:text-3xl text-red-600 font-bold">
               <span className="text-sm md:text-lg mr-0.5">৳</span>
@@ -331,11 +345,33 @@ export default function ProductDetails() {
             </span>
           </div>
 
-          {/* Watch Strap Color */}
+          {/* Product Code */}
           <div className="mt-2">
             <span className="font-medium text-lg">Product Code: </span>
             <span className="text-lg">CODE{selectedImageIndex + 1}</span>
           </div>
+
+          {/* Color Family - Added Section */}
+          {productData?.colorFamily?.length > 0 && (
+            <div className="mt-2">
+              <span className="font-medium text-lg">Color Family: </span>
+              <div className="flex gap-2 mt-2">
+                {productData.colorFamily.map((color, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImageIndex(index)}
+                    className={`px-4 py-1 rounded-full border-2 ${
+                      selectedImageIndex === index
+                        ? "border-blue-500 font-medium"
+                        : "border-gray-300"
+                    }`}
+                  >
+                    {color}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Quantity Selector */}
           <div className={`mt-4 ${productData?.quantity < 1 && "hidden"}`}>
@@ -364,6 +400,48 @@ export default function ProductDetails() {
             </p>
           </div>
 
+         
+
+          <div className="mt-6">
+            <h2 className="text-lg font-medium mb-2">Product Description</h2>
+            <p className="text-gray-700">{productData?.description}</p>
+          </div>
+
+          {/* Color and Size Selection */}
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold">Color Variant: {selectedColor}</h3>
+            <div className="flex space-x-2 mt-2">
+              {colors.map((color, index) => (
+                <img
+                  key={index}
+                  src={`/path-to-${color.toLowerCase()}.jpg`}
+                  alt={color}
+                  className={`w-12 h-12 rounded-lg cursor-pointer border-2 ${
+                    selectedColor === color ? "border-orange-500" : "border-gray-200"
+                  }`}
+                  onClick={() => setSelectedColor(color)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold">Size</h3>
+            <div className="flex space-x-2 mt-2">
+              {sizes.map((size) => (
+                <button
+                  key={size}
+                  className={`px-4 py-2 border ${
+                    selectedSize === size ? "bg-orange-500 text-white" : "bg-gray-100"
+                  } rounded-lg cursor-pointer`}
+                  onClick={() => setSelectedSize(size)}
+                >
+                  {size}
+                </button>
+              ))}
+              
+            </div>
+          </div>
           {productData?.quantity < 1 ? (
             <p className="text-xl font-semibold text-orange-500 mt-4">Stock Out</p>
           ) : (
@@ -381,7 +459,6 @@ export default function ProductDetails() {
             </div>
           )}
 
-          {/* Share Button */}
           <div className="mt-6 text-2xl flex items-center space-x-5">
             <Wish id={productData?._id} />
             <IoShareSocialOutline
@@ -389,22 +466,16 @@ export default function ProductDetails() {
               className="cursor-pointer"
             />
           </div>
-
-          {/* Product Description */}
-          <div className="mt-6">
-            <h2 className="text-lg font-medium mb-2">Product Description</h2>
-            <p className="text-gray-700">{productData?.description}</p>
-          </div>
         </div>
       </div>
 
-      {/* Product Details */}
+      
+
       <div className="mt-6">
         <h2 className="text-lg font-medium mb-2">Product Details</h2>
         {details}
       </div>
 
-      {/* Product Reviews */}
       <div className="mt-8">
         <h2 className="text-lg font-medium mb-4">Product Reviews</h2>
         <div className="mb-6">
@@ -431,10 +502,10 @@ export default function ProductDetails() {
                     />
                   ))}
                 </div>
-                <p className="mt-2 text-gray-700">{review.reviewText}</p>
-                {review.reviewImageUrl && (
+                <p className="mt-2 text-gray-700">{review.comment}</p>
+                {review.image && (
                   <img
-                    src={review.reviewImageUrl}
+                    src={review.image}
                     alt="Review"
                     className="mt-2 w-32 h-32 object-cover"
                   />
@@ -446,7 +517,6 @@ export default function ProductDetails() {
           )}
         </div>
 
-        {/* Review Form */}
         <div className="mt-6">
           <h3 className="text-lg font-medium mb-2">Submit Your Review</h3>
           <div className="flex items-center space-x-2">
@@ -471,7 +541,7 @@ export default function ProductDetails() {
           <input
             type="file"
             accept="image/*"
-            onChange={(e) => setreviewImageUrl(e.target.files[0])}
+            onChange={handleImageChange}
             className="mt-2 p-3 border w-full rounded-md"
           />
           <button
@@ -484,4 +554,6 @@ export default function ProductDetails() {
       </div>
     </div>
   );
-}
+};
+
+export default ProductPage;
