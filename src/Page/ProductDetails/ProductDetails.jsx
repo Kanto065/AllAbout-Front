@@ -26,7 +26,6 @@ const ProductPage = () => {
   const [orderedQuantity, setOrderedQuantity] = useState(1);
   const [details, setDetails] = useState(null);
   const [selectedColor, setSelectedColor] = useState("");
-  const [selectedSize, setSelectedSize] = useState(34);
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(null);
   const [reviewText, setReviewText] = useState("");
@@ -51,6 +50,7 @@ const ProductPage = () => {
     }
   }, [axiosPublic, productName, productData?._id]);
 
+  // When productData loads, if variants exist, set the default selectedColor to the first variant key (if current selectedColor is not available)
   useEffect(() => {
     if (productData && productData.variants) {
       const variantKeys = Object.keys(productData.variants);
@@ -163,7 +163,7 @@ const ProductPage = () => {
 
     try {
       const response = await axiosPublic.post(
-        "https://your_server_domain/upload-review-image",
+        "https://server.allaboutcraftbd.com/upload",
         formData,
         {
           headers: {
@@ -171,7 +171,7 @@ const ProductPage = () => {
           },
         }
       );
-      return response.data.imageUrl; // Adjust according to your server response
+      return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`; // Adjust according to your server response
     } catch (error) {
       throw new Error("File upload failed");
     }
