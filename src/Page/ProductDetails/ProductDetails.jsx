@@ -32,6 +32,7 @@ const ProductPage = () => {
   const [reviews, setReviews] = useState([]);
   const [reviewImage, setReviewImage] = useState(null);
   const [averageRating, setAverageRating] = useState(0);
+  const [selectedVariantImage, setSelectedVariantImage] = useState(null);
   const { name: productName } = useParams();
   const location = useLocation()?.pathname;
   const navigate = useNavigate();
@@ -56,6 +57,7 @@ const ProductPage = () => {
       const variantKeys = Object.keys(productData.variants);
       if (variantKeys.length > 0 && !variantKeys.includes(selectedColor)) {
         setSelectedColor(variantKeys[0]);
+        setSelectedVariantImage(productData.variants[variantKeys[0]]);
       }
     }
   }, [productData, selectedColor]);
@@ -259,9 +261,9 @@ const ProductPage = () => {
         {/* Left - Product Images */}
         <div className="flex-1 w-full mx-auto">
           <div className="relative rounded-lg overflow-hidden bg-white mb-4 lg:w-10/12 mx-auto">
-            {isVideo(productData?.images[selectedImageIndex]) ? (
+            {isVideo(selectedVariantImage || productData?.images[selectedImageIndex]) ? (
               <video
-                src={productData?.images[selectedImageIndex]}
+                src={selectedVariantImage || productData?.images[selectedImageIndex]}
                 autoPlay
                 loop
                 muted
@@ -272,7 +274,7 @@ const ProductPage = () => {
               </video>
             ) : (
               <img
-                src={productData?.images[selectedImageIndex]}
+                src={selectedVariantImage || productData?.images[selectedImageIndex]}
                 alt="Selected Product"
                 className="w-full min-h-[400px] h-full object-contain"
               />
@@ -298,11 +300,14 @@ const ProductPage = () => {
                   key={idx}
                   src={media}
                   className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx
+                    selectedImageIndex === idx && !selectedVariantImage
                       ? "border-blue-600"
                       : "border-gray-300"
                   }`}
-                  onClick={() => setSelectedImageIndex(idx)}
+                  onClick={() => {
+                    setSelectedImageIndex(idx);
+                    setSelectedVariantImage(null);
+                  }}
                   muted
                 />
               ) : (
@@ -311,11 +316,14 @@ const ProductPage = () => {
                   src={media}
                   alt={`Thumbnail ${idx}`}
                   className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx
+                    selectedImageIndex === idx && !selectedVariantImage
                       ? "border-blue-600"
                       : "border-gray-300"
                   }`}
-                  onClick={() => setSelectedImageIndex(idx)}
+                  onClick={() => {
+                    setSelectedImageIndex(idx);
+                    setSelectedVariantImage(null);
+                  }}
                 />
               )
             )}
@@ -424,7 +432,10 @@ const ProductPage = () => {
                           ? "border-orange-500"
                           : "border-gray-200"
                       }`}
-                      onClick={() => setSelectedColor(color)}
+                      onClick={() => {
+                        setSelectedColor(color);
+                        setSelectedVariantImage(imgUrl);
+                      }}
                     />
                   )
                 )}
@@ -499,6 +510,26 @@ const ProductPage = () => {
                     alt="Review"
                     className="mt-2 w-32 h-32 object-cover"
                   />
+                )}
+                {/* Display selected product variant images */}
+                {productData?.variants && (
+                  <div className="mt-2">
+                    <h4 className="text-lg font-medium mb-2">
+                      Selected Product Variants
+                    </h4>
+                    <div className="flex space-x-2">
+                      {Object.entries(productData.variants).map(
+                        ([color, imgUrl], index) => (
+                          <img
+                            key={index}
+                            src={imgUrl}
+                            alt={color}
+                            className="w-12 h-12 rounded-lg cursor-pointer border-2 border-gray-200"
+                          />
+                        )
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             ))
