@@ -25,7 +25,7 @@ const ProductPage = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [orderedQuantity, setOrderedQuantity] = useState(1);
   const [details, setDetails] = useState(null);
-  const [selectedColor, setSelectedColor] = useState("Grey");
+  const [selectedColor, setSelectedColor] = useState("");
   const [selectedSize, setSelectedSize] = useState(34);
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(null);
@@ -37,18 +37,28 @@ const ProductPage = () => {
   const location = useLocation()?.pathname;
   const navigate = useNavigate();
 
-  const colors = ["Grey", "Green", "Pink", "Yellow", "Blue"];
-  const sizes = [34, 36, 38, 40, 42, 44, 46, 48, 50];
   useEffect(() => {
-    axiosPublic
-      .get(`/products/${productName}`)
-      .then((data) => setProductData(data?.data));
-
-    axiosPublic.get(`/reviews/${productName}`).then((data) => {
-      setReviews(data?.data || []);
-      calculateAverageRating(data?.data || []);
+    axiosPublic.get(`/products/${productName}`).then((data) => {
+      setProductData(data?.data);
     });
-  }, [axiosPublic, productName]);
+
+    if (productData?._id) {
+      axiosPublic.get(`/reviews/${productData?._id}`).then((data) => {
+        const reviewsData = data?.data || [];
+        setReviews(reviewsData);
+        calculateAverageRating(reviewsData);
+      });
+    }
+  }, [axiosPublic, productName, productData?._id]);
+
+  useEffect(() => {
+    if (productData && productData.variants) {
+      const variantKeys = Object.keys(productData.variants);
+      if (variantKeys.length > 0 && !variantKeys.includes(selectedColor)) {
+        setSelectedColor(variantKeys[0]);
+      }
+    }
+  }, [productData, selectedColor]);
 
   const calculateAverageRating = (reviews) => {
     if (reviews.length === 0) {
@@ -75,8 +85,7 @@ const ProductPage = () => {
   const handlePrevImage = () => {
     setSelectedImageIndex(
       (prevIndex) =>
-        (prevIndex - 1 + productData?.images.length) %
-        productData?.images.length
+        (prevIndex - 1 + productData?.images.length) % productData?.images.length
     );
   };
 
@@ -150,17 +159,21 @@ const ProductPage = () => {
 
   const uploadImage = async (file) => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     try {
-      const response = await axiosPublic.post('https://server.allaboutcraftbd.com/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`; // Adjust according to your server response
+      const response = await axiosPublic.post(
+        "https://your_server_domain/upload-review-image",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      return response.data.imageUrl; // Adjust according to your server response
     } catch (error) {
-      throw new Error('File upload failed');
+      throw new Error("File upload failed");
     }
   };
 
@@ -169,10 +182,6 @@ const ProductPage = () => {
       navigate("/login", { state: { from: location } });
       return;
     }
-
-    const formData = new FormData();
-    formData.append("rating", rating);
-    formData.append("comment", reviewText);
 
     let imageURL = null;
     if (reviewImage) {
@@ -197,18 +206,22 @@ const ProductPage = () => {
     console.log("Review Data:", reviewData); // Log the review data being sent
 
     try {
-      const response = await axiosPublic.post(`/reviews/${productData?._id}`, reviewData);
+      const response = await axiosPublic.post(
+        `/reviews/${productData?._id}`,
+        reviewData
+      );
       console.log("Review Submission Response:", response); // Log the response from the server
       if (response?.data?.insertedId) {
         Swal.fire({
           icon: "success",
           title: "Review submitted successfully",
         });
-        setReviews([...reviews, reviewData]);
+        const updatedReviews = [...reviews, reviewData];
+        setReviews(updatedReviews);
         setRating(0);
         setReviewText("");
         setReviewImage(null);
-        calculateAverageRating([...reviews, reviewData]);
+        calculateAverageRating(updatedReviews);
       } else {
         Swal.fire({
           icon: "error",
@@ -335,7 +348,7 @@ const ProductPage = () => {
             <span className="text-lg">CODE{selectedImageIndex + 1}</span>
           </div>
 
-          {/* Color Family - Added Section */}
+          {/* Color Family - (if provided) */}
           {productData?.colorFamily?.length > 0 && (
             <div className="mt-2">
               <span className="font-medium text-lg">Color Family: </span>
@@ -373,61 +386,56 @@ const ProductPage = () => {
                 <button
                   disabled={orderedQuantity >= productData?.quantity}
                   onClick={() => setOrderedQuantity(orderedQuantity + 1)}
-                  className=" px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
+                  className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
                 >
                   +
                 </button>
               </div>
             </div>
-            <p className={`font-medium text-lg mt-2 ${productData?.quantity < 1 && "hidden"}`}>
+            <p
+              className={`font-medium text-lg mt-2 ${
+                productData?.quantity < 1 && "hidden"
+              }`}
+            >
               Available Quantity: {productData?.quantity}
             </p>
           </div>
-
-         
 
           <div className="mt-6">
             <h2 className="text-lg font-medium mb-2">Product Description</h2>
             <p className="text-gray-700">{productData?.description}</p>
           </div>
 
-          {/* Color and Size Selection */}
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold">Color Variant: {selectedColor}</h3>
-            <div className="flex space-x-2 mt-2">
-              {colors.map((color, index) => (
-                <img
-                  key={index}
-                  src={`/path-to-${color.toLowerCase()}.jpg`}
-                  alt={color}
-                  className={`w-12 h-12 rounded-lg cursor-pointer border-2 ${
-                    selectedColor === color ? "border-orange-500" : "border-gray-200"
-                  }`}
-                  onClick={() => setSelectedColor(color)}
-                />
-              ))}
+          {/* Color Variant Selection using productData.variants */}
+          {productData?.variants && (
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold">
+                Product Variant: {selectedColor}
+              </h3>
+              <div className="flex space-x-2 mt-2">
+                {Object.entries(productData.variants).map(
+                  ([color, imgUrl], index) => (
+                    <img
+                      key={index}
+                      src={imgUrl}
+                      alt={color}
+                      className={`w-12 h-12 rounded-lg cursor-pointer border-2 ${
+                        selectedColor === color
+                          ? "border-orange-500"
+                          : "border-gray-200"
+                      }`}
+                      onClick={() => setSelectedColor(color)}
+                    />
+                  )
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold">Size</h3>
-            <div className="flex space-x-2 mt-2">
-              {sizes.map((size) => (
-                <button
-                  key={size}
-                  className={`px-4 py-2 border ${
-                    selectedSize === size ? "bg-orange-500 text-white" : "bg-gray-100"
-                  } rounded-lg cursor-pointer`}
-                  onClick={() => setSelectedSize(size)}
-                >
-                  {size}
-                </button>
-              ))}
-              
-            </div>
-          </div>
           {productData?.quantity < 1 ? (
-            <p className="text-xl font-semibold text-orange-500 mt-4">Stock Out</p>
+            <p className="text-xl font-semibold text-orange-500 mt-4">
+              Stock Out
+            </p>
           ) : (
             <div className="mt-6 flex flex-col md:flex-row gap-4">
               <SingleOrder
@@ -452,8 +460,6 @@ const ProductPage = () => {
           </div>
         </div>
       </div>
-
-      
 
       <div className="mt-6">
         <h2 className="text-lg font-medium mb-2">Product Details</h2>
@@ -507,7 +513,7 @@ const ProductPage = () => {
             {[...Array(5)].map((_, i) => (
               <FaStar
                 key={i}
-                color={i < hover || i < rating ? "#ffc107" : "#e4e5e9"}
+                color={i < (hover || rating) ? "#ffc107" : "#e4e5e9"}
                 onClick={() => setRating(i + 1)}
                 onMouseEnter={() => setHover(i + 1)}
                 onMouseLeave={() => setHover(null)}

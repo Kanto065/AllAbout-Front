@@ -20,49 +20,47 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
     const [type, setType] = useState('');
     const [subCategory, setSubCategory] = useState('');
     const [description, setDescription] = useState('');
-    const [details, setDetails] = useState(``);
+    const [details, setDetails] = useState('');
     const [images, setImages] = useState([]);
     const [discount, setDiscount] = useState(0);
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState([]);
     const [selectedSubCategory, setSelectedSubCategory] = useState([]);
-    const [variantInputs, setVariantInputs] = useState([
-        { name: '', image: null }, // Initial input
-    ]);
+    const [variants, setVariants] = useState([{ name: '', image: null }]);
 
     const handleVariantNameChange = (index, value) => {
-        const updatedVariants = [...variantInputs];
+        const updatedVariants = [...variants];
         updatedVariants[index].name = value;
-        setVariantInputs(updatedVariants);
+        setVariants(updatedVariants);
     };
 
     const handleVariantImageChange = (index, file) => {
-        const updatedVariants = [...variantInputs];
+        const updatedVariants = [...variants];
         updatedVariants[index].image = file;
-        setVariantInputs(updatedVariants);
+        setVariants(updatedVariants);
     };
 
     const handleAddVariantInput = () => {
-        setVariantInputs([...variantInputs, { name: '', image: null }]);
+        setVariants([...variants, { name: '', image: null }]);
     };
 
     const handleRemoveVariantInput = (index) => {
-        const updatedVariants = variantInputs.filter((_, i) => i !== index);
-        setVariantInputs(updatedVariants);
+        const updatedVariants = variants.filter((_, i) => i !== index);
+        setVariants(updatedVariants);
     };
 
-    useEffect(()=>{
+    useEffect(() => {
         setSelectedCategory(
             categories?.filter(item => item?.mainCategory === mainCategory)
-        )
-    },[categories, mainCategory])
+        );
+    }, [categories, mainCategory]);
 
-    useEffect(()=>{
+    useEffect(() => {
         setSelectedSubCategory(
             subCategories?.filter(item => item?.category === type)
-        )
-    },[subCategories, type])
+        );
+    }, [subCategories, type]);
 
     const handleImageChange = (event) => {
         const files = Array.from(event.target.files);
@@ -99,12 +97,12 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
             }
 
             const uploadedVariantImages = await Promise.all(
-                variantInputs.map((variant) =>
+                variants.map((variant) =>
                     variant.image ? uploadImage(variant.image) : null
                 )
             );
 
-            const variants = variantInputs.reduce((acc, variant, index) => {
+            const variantsData = variants.reduce((acc, variant, index) => {
                 if (variant.name && uploadedVariantImages[index]) {
                     acc[variant.name] = uploadedVariantImages[index];
                 }
@@ -114,15 +112,15 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
             // Create new product with uploaded file URLs
             const newProduct = {
                 name,
-                price:parseInt(price),
-                quantity:parseInt(quantity),
+                price: parseInt(price),
+                quantity: parseInt(quantity),
                 mainCategory,
                 category: type,
                 subCategory,
                 description,
                 details,
-                cost:parseInt(cost),
-                variants,
+                cost: parseInt(cost),
+                variants: variantsData,
                 images: uploadedImageURLs,
                 discount: parseFloat(discount),
                 number: parseInt(presentProduct) + 1,
@@ -137,11 +135,12 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                 setCost(0);
                 setMainCategory('');
                 setType('');
-                setSubCategory("");
+                setSubCategory('');
                 setDescription('');
                 setDetails('');
                 setImages([]);
                 setDiscount(0);
+                setVariants([{ name: '', image: null }]);
                 setAdd(false);
                 setReload(true);
             } else {
@@ -152,6 +151,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
             setLoading(false);
         }
     };
+
     return (
         <div className="py-5">
             <Helmet>
@@ -184,7 +184,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                             required
                             placeholder='Enter The Product Category'
                         >
-                            <option value="">Select Main Category</option>{" "}
+                            <option value="">Select Main Category</option>
                             {
                                 mainCategories?.map((category, idx) =>
                                     <option key={idx} value={category?.name}>{category?.name}</option>
@@ -204,7 +204,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                             required
                             placeholder='Enter The Product Category'
                         >
-                            <option value="">Select Category</option>{" "}
+                            <option value="">Select Category</option>
                             {
                                 selectedCategory?.map((category, idx) =>
                                     <option key={idx} value={category?.name}>{category?.name}</option>
@@ -221,7 +221,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                             onChange={(e) => setSubCategory(e.target.value)}
                             placeholder='Enter The Product Category'
                         >
-                            <option value="">Select Sub Category</option>{" "}
+                            <option value="">Select Sub Category</option>
                             {
                                 selectedSubCategory?.map((category, idx) =>
                                     <option key={idx} value={category?.name}>{category?.name}</option>
@@ -302,11 +302,11 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                         className="mb-4 px-4 py-2 bg-green-500 text-white rounded"
                         onClick={handleAddVariantInput}
                     >
-                        {variantInputs.length === 0 ? 'Add Product Variant' : 'Add Another Product Variant'}
+                        {variants.length === 0 ? 'Add Product Variant' : 'Add Another Product Variant'}
                     </button>
 
                     {/* Render Variant Inputs Only If Present */}
-                    {variantInputs.map((variant, index) => (
+                    {variants.map((variant, index) => (
                         <div key={index} className="flex flex-col lg:flex-row items-center mb-4">
                             <div className="lg:w-1/2 pr-2">
                                 <label className="text-lg font-medium">Variant Name:</label>
@@ -325,6 +325,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                                         <input
                                             className="p-2 rounded bg-gray-200 w-full"
                                             type="file"
+                                            accept="image/*"
                                             onChange={(e) => handleVariantImageChange(index, e.target.files[0])}
                                         />
                                         <button
@@ -335,7 +336,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                                             Delete
                                         </button>
                                     </div>
-                                </div>                               
+                                </div>
                             </div>
                         </div>
                     ))}

@@ -10,13 +10,13 @@ import useMainCategories from '../../../Hooks/useMainCategories';
 import useSubCategories from '../../../Hooks/useSubCategories';
 
 export default function UpdateProduct() {
-    const axiosPublic = useAxiosPublic(); 
+    const axiosPublic = useAxiosPublic();
     const [mainCategories] = useMainCategories();
     const [categories] = useCategories();
     const [subCategories] = useSubCategories();
     const { pname } = useParams(); // Assuming you use URL params to get the product ID
     const [name, setName] = useState('');
-    const [price, setPrice] = useState(0);  
+    const [price, setPrice] = useState(0);
     const [quantity, setQuantity] = useState(0);
     const [mainCategory, setMainCategory] = useState('');
     const [type, setType] = useState('');
@@ -57,17 +57,17 @@ export default function UpdateProduct() {
         setVariantInputs(updatedVariants);
     };
 
-    useEffect(()=>{
+    useEffect(() => {
         setSelectedCategory(
             categories?.filter(item => item?.mainCategory === mainCategory)
-        )
-    },[categories, mainCategory])
+        );
+    }, [categories, mainCategory]);
 
-    useEffect(()=>{
+    useEffect(() => {
         setSelectedSubCategory(
             subCategories?.filter(item => item?.category === type)
-        )
-    },[subCategories, type])
+        );
+    }, [subCategories, type]);
 
     useEffect(() => {
         // Fetch the existing product data when the component mounts
@@ -75,7 +75,7 @@ export default function UpdateProduct() {
             try {
                 const response = await axiosPublic.get(`/products/${pname}`);
                 const product = response.data;
-                
+
                 setName(product?.name || "");
                 setPrice(product?.price || 0);
                 setQuantity(product?.quantity || 0);
@@ -87,14 +87,14 @@ export default function UpdateProduct() {
                 setDetails(product?.details || "");
                 setImages(product?.images.map(img => ({ name: img, url: img })) || []);
                 setDiscount(product?.discount || 0);
-                setId(product?._id)
+                setId(product?._id);
             } catch (error) {
                 setMessage('Failed to fetch product data');
             }
         };
 
         fetchProductData();
-        setUpdate(false)
+        setUpdate(false);
     }, [pname, axiosPublic, update]);
 
     const handleImageChange = (event) => {
@@ -152,10 +152,10 @@ export default function UpdateProduct() {
             // Create updated product with uploaded file URLs
             const updatedProduct = {
                 name,
-                price:parseInt(price),
-                quantity:parseInt(quantity),
+                price: parseInt(price),
+                quantity: parseInt(quantity),
                 mainCategory,
-                category:type,
+                category: type,
                 subCategory,
                 description,
                 details,
@@ -168,14 +168,14 @@ export default function UpdateProduct() {
 
             if (response?.data?.modifiedCount > 0) {
                 setUpdate(true);
-                navigate(`/products/${name}`)
+                navigate(`/products/${name}`);
                 Swal.fire({
                     position: "center",
                     icon: "success",
-                    title: `Product Update Successfully!😊😊`,
+                    title: `Product Updated Successfully!😊😊`,
                     showConfirmButton: false,
                     timer: 1000
-                  });
+                });
             } else {
                 console.error('Response data did not contain expected fields:', response.data);
                 Swal.fire({
@@ -184,7 +184,7 @@ export default function UpdateProduct() {
                     title: `Product Update Failed!😢😢`,
                     showConfirmButton: false,
                     timer: 1500
-                  });
+                });
             }
         } catch (error) {
             console.error('Error:', error.response ? error.response.data : error.message);
@@ -193,6 +193,7 @@ export default function UpdateProduct() {
             setLoading(false);
         }
     };
+
     return (
         <div className="py-5 max-w-[95%] 2xl:max-w-7xl mx-auto">
             <Helmet>
@@ -201,7 +202,7 @@ export default function UpdateProduct() {
             <h2 className="text-center text-4xl font-bold mb-5">Update Product</h2>
 
             <form className="space-y-4" onSubmit={handleFormSubmit}>
-            <div className="flex flex-col lg:flex-row">
+                <div className="flex flex-col lg:flex-row">
                     <div className="lg:w-1/2 pr-2">
                         <label className="text-lg font-medium">Name:</label><br />
                         <input
@@ -225,7 +226,7 @@ export default function UpdateProduct() {
                             required
                             placeholder='Enter The Product Category'
                         >
-                            <option value="">Select Main Category</option>{" "}
+                            <option value="">Select Main Category</option>
                             {
                                 mainCategories?.map((category, idx) =>
                                     <option key={idx} value={category?.name}>{category?.name}</option>
@@ -245,7 +246,7 @@ export default function UpdateProduct() {
                             required
                             placeholder='Enter The Product Category'
                         >
-                            <option value="">Select Category</option>{" "}
+                            <option value="">Select Category</option>
                             {
                                 selectedCategory?.map((category, idx) =>
                                     <option key={idx} value={category?.name}>{category?.name}</option>
@@ -262,7 +263,7 @@ export default function UpdateProduct() {
                             onChange={(e) => setSubCategory(e.target.value)}
                             placeholder='Enter The Product Category'
                         >
-                            <option value="">Select Sub Category</option>{" "}
+                            <option value="">Select Sub Category</option>
                             {
                                 selectedSubCategory?.map((category, idx) =>
                                     <option key={idx} value={category?.name}>{category?.name}</option>
@@ -349,12 +350,12 @@ export default function UpdateProduct() {
                                         <input
                                             className="p-2 rounded bg-gray-200 w-full"
                                             type="file"
-                                            onChange={(e) => handleVariantImageChange(index, e.target.files[0])} // Handle image upload
+                                            onChange={(e) => handleVariantImageChange(index, e.target.files[0])}
                                         />
                                         <button
                                             type="button"
                                             className="ml-4 px-4 py-2 bg-red-500 text-white rounded"
-                                            onClick={() => handleRemoveVariantInput(index)} // Handle removing a variant input
+                                            onClick={() => handleRemoveVariantInput(index)}
                                         >
                                             Delete
                                         </button>
@@ -363,16 +364,6 @@ export default function UpdateProduct() {
                             </div>
                         </div>
                     ))}
-                    {variantInputs?.length > 0 && (
-                        <div>
-                            {variantInputs.map((variant, index) => (
-                                <div key={index}>
-                                    {/* Display the selected file name or URL */}
-                                    <div>File selected: {variant.image || 'No file selected'}</div> 
-                                </div>
-                            ))}
-                        </div>
-                    )}
                 </div>
 
                 <div>
