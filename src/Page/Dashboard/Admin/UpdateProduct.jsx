@@ -33,12 +33,18 @@ export default function UpdateProduct() {
     const [selectedCategory, setSelectedCategory] = useState([]);
     const [selectedSubCategory, setSelectedSubCategory] = useState([]);
     const [variantInputs, setVariantInputs] = useState([
-        { name: '', image: null }, // Initial input
+        { name: '', image: null, quantity: 0 }, // Initial input
     ]);
 
     const handleVariantNameChange = (index, value) => {
         const updatedVariants = [...variantInputs];
         updatedVariants[index].name = value;
+        setVariantInputs(updatedVariants);
+    };
+
+    const handleVariantQuantityChange = (index, value) => {
+        const updatedVariants = [...variantInputs];
+        updatedVariants[index].quantity = value;
         setVariantInputs(updatedVariants);
     };
 
@@ -49,7 +55,7 @@ export default function UpdateProduct() {
     };
 
     const handleAddVariantInput = () => {
-        setVariantInputs([...variantInputs, { name: '', image: null }]);
+        setVariantInputs([...variantInputs, { name: '', image: null, quantity: 0 }]);
     };
 
     const handleRemoveVariantInput = (index) => {
@@ -83,7 +89,7 @@ export default function UpdateProduct() {
                 setType(product?.category || "");
                 setSubCategory(product?.subCategory || "");
                 setDescription(product?.description || "");
-                setVariantInputs(product?.variants ? Object.entries(product.variants).map(([name, image]) => ({ name, image })) : []);
+                setVariantInputs(product?.variants ? Object.entries(product.variants).map(([name, { image, quantity }]) => ({ name, image, quantity })) : []);
                 setDetails(product?.details || "");
                 setImages(product?.images.map(img => ({ name: img, url: img })) || []);
                 setDiscount(product?.discount || 0);
@@ -144,7 +150,10 @@ export default function UpdateProduct() {
 
             const variants = variantInputs.reduce((acc, variant, index) => {
                 if (variant.name && uploadedVariantImages[index]) {
-                    acc[variant.name] = uploadedVariantImages[index];
+                    acc[variant.name] = {
+                        image: uploadedVariantImages[index],
+                        quantity: variant.quantity
+                    };
                 }
                 return acc;
             }, {});
@@ -333,7 +342,7 @@ export default function UpdateProduct() {
                     {/* Render Variant Inputs Only If Present */}
                     {variantInputs.map((variant, index) => (
                         <div key={index} className="flex flex-col lg:flex-row items-center mb-4">
-                            <div className="lg:w-1/2 pr-2">
+                            <div className="lg:w-1/3 pr-2">
                                 <label className="text-lg font-medium">Variant Name:</label>
                                 <input
                                     className="p-2 rounded bg-gray-200 w-full"
@@ -343,7 +352,17 @@ export default function UpdateProduct() {
                                     placeholder="Enter Variant Name"
                                 />
                             </div>
-                            <div className="lg:w-1/2 pl-2 flex items-center">
+                            <div className="lg:w-1/3 px-2">
+                                <label className="text-lg font-medium">Variant Quantity:</label>
+                                <input
+                                    className="p-2 rounded bg-gray-200 w-full"
+                                    type="number"
+                                    value={variant.quantity}
+                                    onChange={(e) => handleVariantQuantityChange(index, e.target.value)}
+                                    placeholder="Enter Variant Quantity"
+                                />
+                            </div>
+                            <div className="lg:w-1/3 pl-2 flex items-center">
                                 <div>
                                     <label className="text-lg font-medium">Variant Image:</label>
                                     <div className="flex flex-col lg:flex-row items-center">

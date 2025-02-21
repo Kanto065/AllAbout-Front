@@ -23,7 +23,7 @@ const ProductPage = () => {
   const [databaseUser, refetch] = useDatabaseUser();
   const [productData, setProductData] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [orderedQuantity, setOrderedQuantity] = useState(1);
+  const [orderedQuantities, setOrderedQuantities] = useState({});
   const [details, setDetails] = useState(null);
   const [selectedColor, setSelectedColor] = useState("");
   const [rating, setRating] = useState(0);
@@ -57,7 +57,8 @@ const ProductPage = () => {
       const variantKeys = Object.keys(productData.variants);
       if (variantKeys.length > 0 && !variantKeys.includes(selectedColor)) {
         setSelectedColor(variantKeys[0]);
-        setSelectedVariantImage(productData.variants[variantKeys[0]]);
+        setSelectedVariantImage(productData.variants[variantKeys[0]].image);
+        setOrderedQuantities((prev) => ({ ...prev, [variantKeys[0]]: 1 }));
       }
     }
   }, [productData, selectedColor]);
@@ -115,7 +116,7 @@ const ProductPage = () => {
     const cart = {
       email: databaseUser?.email,
       productId: productData?._id,
-      quantity: orderedQuantity,
+      quantity: orderedQuantities[selectedColor],
       code: "CODE" + (selectedImageIndex + 1),
     };
 
@@ -239,13 +240,25 @@ const ProductPage = () => {
     }
   };
 
-  const isVideo = (url) =>
-    url?.endsWith(".mp4") ||
-    url?.endsWith(".webm") ||
-    url?.endsWith(".ogg") ||
-    url?.endsWith(".mov") ||
-    url?.endsWith(".avi") ||
-    url?.endsWith(".mkv");
+  const isVideo = (url) => {
+    if (typeof url !== 'string') return false;
+    return (
+      url.endsWith(".mp4") ||
+      url.endsWith(".webm") ||
+      url.endsWith(".ogg") ||
+      url.endsWith(".mov") ||
+      url.endsWith(".avi") ||
+      url.endsWith(".mkv")
+    );
+  };
+
+  const handleQuantityChange = (variant, amount) => {
+    setOrderedQuantities((prev) => {
+      const newQuantity = (prev[variant] || 0) + amount;
+      if (newQuantity < 0) return prev;
+      return { ...prev, [variant]: newQuantity };
+    });
+  };
 
   if (!productData) {
     return (
@@ -254,6 +267,10 @@ const ProductPage = () => {
       </div>
     );
   }
+
+  const selectedVariant = productData.variants[selectedColor];
+  const availableQuantity = selectedVariant ? selectedVariant.quantity : productData.quantity;
+  const isOrderQuantityZero = orderedQuantities[selectedColor] === 0;
 
   return (
     <div className="max-w-[95%] 2xl:max-w-7xl mx-auto pt-32 md:pt-48 pb-10">
@@ -350,68 +367,10 @@ const ProductPage = () => {
             </span>
           </div>
 
-          {/* Product Code */}
+          {/* Available Quantity */}
           <div className="mt-2">
-            <span className="font-medium text-lg">Product Code: </span>
-            <span className="text-lg">CODE{selectedImageIndex + 1}</span>
-          </div>
-
-          {/* Color Family - (if provided) */}
-          {productData?.colorFamily?.length > 0 && (
-            <div className="mt-2">
-              <span className="font-medium text-lg">Color Family: </span>
-              <div className="flex gap-2 mt-2">
-                {productData.colorFamily.map((color, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImageIndex(index)}
-                    className={`px-4 py-1 rounded-full border-2 ${
-                      selectedImageIndex === index
-                        ? "border-blue-500 font-medium"
-                        : "border-gray-300"
-                    }`}
-                  >
-                    {color}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quantity Selector */}
-          <div className={`mt-4 ${productData?.quantity < 1 && "hidden"}`}>
-            <div className="flex items-center space-x-2">
-              <span className="font-medium text-lg">Order Quantity: </span>
-              <div className="flex items-center gap-2 mt-2">
-                <button
-                  onClick={() => setOrderedQuantity(orderedQuantity - 1)}
-                  className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
-                  disabled={orderedQuantity <= 1}
-                >
-                  -
-                </button>
-                <span className="text-lg">{orderedQuantity}</span>
-                <button
-                  disabled={orderedQuantity >= productData?.quantity}
-                  onClick={() => setOrderedQuantity(orderedQuantity + 1)}
-                  className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-            <p
-              className={`font-medium text-lg mt-2 ${
-                productData?.quantity < 1 && "hidden"
-              }`}
-            >
-              Available Quantity: {productData?.quantity}
-            </p>
-          </div>
-
-          <div className="mt-6">
-            <h2 className="text-lg font-medium mb-2">Product Description</h2>
-            <p className="text-gray-700">{productData?.description}</p>
+            <span className="font-medium text-lg">Available Quantity: </span>
+            <span className="text-lg">{availableQuantity}</span>
           </div>
 
           {/* Color Variant Selection using productData.variants */}
@@ -422,10 +381,10 @@ const ProductPage = () => {
               </h3>
               <div className="flex space-x-2 mt-2">
                 {Object.entries(productData.variants).map(
-                  ([color, imgUrl], index) => (
+                  ([color, { image }], index) => (
                     <img
                       key={index}
-                      src={imgUrl}
+                      src={image}
                       alt={color}
                       className={`w-12 h-12 rounded-lg cursor-pointer border-2 ${
                         selectedColor === color
@@ -434,7 +393,7 @@ const ProductPage = () => {
                       }`}
                       onClick={() => {
                         setSelectedColor(color);
-                        setSelectedVariantImage(imgUrl);
+                        setSelectedVariantImage(image);
                       }}
                     />
                   )
@@ -443,7 +402,31 @@ const ProductPage = () => {
             </div>
           )}
 
-          {productData?.quantity < 1 ? (
+          {/* Quantity Selector */}
+          <div className={`mt-4`}>
+            <div className="flex items-center space-x-2">
+              <span className="font-medium text-lg">Order Quantity: </span>
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={() => handleQuantityChange(selectedColor, -1)}
+                  className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
+                  disabled={orderedQuantities[selectedColor] <= 0}
+                >
+                  -
+                </button>
+                <span className="text-lg">{orderedQuantities[selectedColor]}</span>
+                <button
+                  onClick={() => handleQuantityChange(selectedColor, 1)}
+                  className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
+                  disabled={orderedQuantities[selectedColor] >= availableQuantity}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {availableQuantity < 1 ? (
             <p className="text-xl font-semibold text-orange-500 mt-4">
               Stock Out
             </p>
@@ -451,11 +434,12 @@ const ProductPage = () => {
             <div className="mt-6 flex flex-col md:flex-row gap-4">
               <SingleOrder
                 productName={productData?.name}
-                adiInfo={{ order: orderedQuantity, selectedImageIndex }}
+                adiInfo={{ order: orderedQuantities[selectedColor], selectedImageIndex }}
               />
               <button
                 onClick={handleCart}
-                className="px-6 py-3 bg-[#7dd67d] text-white rounded-lg transition"
+                className={`px-6 py-3 bg-[#7dd67d] text-white rounded-lg transition ${isOrderQuantityZero ? "opacity-50 cursor-not-allowed" : ""}`}
+                disabled={isOrderQuantityZero}
               >
                 Add to Cart
               </button>
@@ -468,6 +452,11 @@ const ProductPage = () => {
               onClick={handleShare}
               className="cursor-pointer"
             />
+          </div>
+
+          <div className="mt-6">
+            <h2 className="text-lg font-medium mb-2">Product Description</h2>
+            <p className="text-gray-700">{productData?.description}</p>
           </div>
         </div>
       </div>
@@ -519,10 +508,10 @@ const ProductPage = () => {
                     </h4>
                     <div className="flex space-x-2">
                       {Object.entries(productData.variants).map(
-                        ([color, imgUrl], index) => (
+                        ([color, { image }], index) => (
                           <img
                             key={index}
-                            src={imgUrl}
+                            src={image}
                             alt={color}
                             className="w-12 h-12 rounded-lg cursor-pointer border-2 border-gray-200"
                           />

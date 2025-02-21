@@ -27,11 +27,17 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
     const [loading, setLoading] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState([]);
     const [selectedSubCategory, setSelectedSubCategory] = useState([]);
-    const [variants, setVariants] = useState([{ name: '', image: null }]);
+    const [variants, setVariants] = useState([{ name: '', image: null, quantity: 0 }]);
 
     const handleVariantNameChange = (index, value) => {
         const updatedVariants = [...variants];
         updatedVariants[index].name = value;
+        setVariants(updatedVariants);
+    };
+
+    const handleVariantQuantityChange = (index, value) => {
+        const updatedVariants = [...variants];
+        updatedVariants[index].quantity = value;
         setVariants(updatedVariants);
     };
 
@@ -42,7 +48,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
     };
 
     const handleAddVariantInput = () => {
-        setVariants([...variants, { name: '', image: null }]);
+        setVariants([...variants, { name: '', image: null, quantity: 0 }]);
     };
 
     const handleRemoveVariantInput = (index) => {
@@ -104,7 +110,10 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
 
             const variantsData = variants.reduce((acc, variant, index) => {
                 if (variant.name && uploadedVariantImages[index]) {
-                    acc[variant.name] = uploadedVariantImages[index];
+                    acc[variant.name] = {
+                        image: uploadedVariantImages[index],
+                        quantity: variant.quantity
+                    };
                 }
                 return acc;
             }, {});
@@ -140,7 +149,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                 setDetails('');
                 setImages([]);
                 setDiscount(0);
-                setVariants([{ name: '', image: null }]);
+                setVariants([{ name: '', image: null, quantity: 0 }]);
                 setAdd(false);
                 setReload(true);
             } else {
@@ -308,7 +317,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                     {/* Render Variant Inputs Only If Present */}
                     {variants.map((variant, index) => (
                         <div key={index} className="flex flex-col lg:flex-row items-center mb-4">
-                            <div className="lg:w-1/2 pr-2">
+                            <div className="lg:w-1/3 pr-2">
                                 <label className="text-lg font-medium">Variant Name:</label>
                                 <input
                                     className="p-2 rounded bg-gray-200 w-full"
@@ -318,7 +327,17 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                                     placeholder="Enter Variant Name"
                                 />
                             </div>
-                            <div className="lg:w-1/2 pl-2 flex items-center">
+                            <div className="lg:w-1/3 px-2">
+                                <label className="text-lg font-medium">Variant Quantity:</label>
+                                <input
+                                    className="p-2 rounded bg-gray-200 w-full"
+                                    type="number"
+                                    value={variant.quantity}
+                                    onChange={(e) => handleVariantQuantityChange(index, e.target.value)}
+                                    placeholder="Enter Variant Quantity"
+                                />
+                            </div>
+                            <div className="lg:w-1/3 pl-2 flex items-center">
                                 <div>
                                     <label className="text-lg font-medium">Variant Image:</label>
                                     <div className="flex flex-col lg:flex-row items-center">
