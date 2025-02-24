@@ -16,6 +16,9 @@ import Swal from "sweetalert2";
 import Wish from "../../Components/Icons/Wish";
 import SingleOrder from "../../Components/PopUp/SingleOrder";
 import { FaStar } from "react-icons/fa";
+import Slider from "react-slick"; // Import react-slick
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
 
 const ProductPage = () => {
   const { user } = useAuth();
@@ -51,27 +54,15 @@ const ProductPage = () => {
     }
   }, [axiosPublic, productName, productData?._id]);
 
+  // When productData loads, if variants exist, set the default selectedColor to the first variant key (if current selectedColor is not available)
   useEffect(() => {
     if (productData && productData.variants) {
       const variantKeys = Object.keys(productData.variants);
-      if (variantKeys.length > 0) {
-        // Initialize orderedQuantities for each variant
-        const initialQuantities = variantKeys.reduce((acc, color) => {
-          acc[color] = acc[color] || 0; // Initialize to 0 or keep existing value
-          return acc;
-        }, { ...orderedQuantities });
-
-        setOrderedQuantities(initialQuantities);
-
-        // Set the default selected color and image if not already set
-        if (!variantKeys.includes(selectedColor)) {
-          setSelectedColor(variantKeys[0]);
-          setSelectedVariantImage(productData.variants[variantKeys[0]].image);
-        }
+      if (variantKeys.length > 0 && !variantKeys.includes(selectedColor)) {
+        setSelectedColor(variantKeys[0]);
+        setSelectedVariantImage(productData.variants[variantKeys[0]].image);
+        setOrderedQuantities((prev) => ({ ...prev, [variantKeys[0]]: 1 }));
       }
-    } else {
-      // If no variants, initialize with product quantity
-      setOrderedQuantities((prev) => ({ ...prev, base: 1 })); // Set initial quantity to 1
     }
   }, [productData, selectedColor]);
 
@@ -86,23 +77,21 @@ const ProductPage = () => {
   };
 
   useEffect(() => {
-    if (productData?.details) {
-      const sanitizedHTML = DOMPurify.sanitize(productData.details);
-      const content = <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
-      setDetails(content);
-    }
+    const sanitizedHTML = DOMPurify.sanitize(productData?.details);
+    const content = <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
+    setDetails(content);
   }, [productData]);
 
   const handleNextImage = () => {
     setSelectedImageIndex(
-      (prevIndex) => (prevIndex + 1) % (productData?.images?.length || 1)
+      (prevIndex) => (prevIndex + 1) % productData?.images.length
     );
   };
 
   const handlePrevImage = () => {
     setSelectedImageIndex(
       (prevIndex) =>
-        (prevIndex - 1 + (productData?.images?.length || 1)) % (productData?.images?.length || 1)
+        (prevIndex - 1 + productData?.images.length) % productData?.images.length
     );
   };
 
@@ -130,7 +119,7 @@ const ProductPage = () => {
     const cart = {
       email: databaseUser?.email,
       productId: productData?._id,
-      quantity: productData.variants ? orderedQuantities[selectedColor] : 1,
+      quantity: orderedQuantities[selectedColor],
       code: "CODE" + (selectedImageIndex + 1),
     };
 
@@ -282,9 +271,18 @@ const ProductPage = () => {
     );
   }
 
-  const selectedVariant = productData.variants ? productData.variants[selectedColor] : null;
+  const selectedVariant = productData.variants[selectedColor];
   const availableQuantity = selectedVariant ? selectedVariant.quantity : productData.quantity;
-  const isOrderQuantityZero = productData.variants ? orderedQuantities[selectedColor] === 0 : orderedQuantities.base === 0;
+  const isOrderQuantityZero = orderedQuantities[selectedColor] === 0;
+
+  const settings = {
+    dots: true,
+    infinite: true,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    arrows: false,
+  };
 
   return (
     <div className="max-w-[95%] 2xl:max-w-7xl mx-auto pt-32 md:pt-48 pb-10">
@@ -292,39 +290,65 @@ const ProductPage = () => {
         {/* Left - Product Images */}
         <div className="flex-1 w-full mx-auto">
           <div className="relative rounded-lg overflow-hidden bg-white mb-4 lg:w-10/12 mx-auto">
-            {isVideo(selectedVariantImage || productData?.images[selectedImageIndex]) ? (
-              <video
-                src={selectedVariantImage || productData?.images[selectedImageIndex]}
-                autoPlay
-                loop
-                muted
-                controls
-                className="w-full h-[400px] object-contain"
+            <div className="hidden lg:block">
+              {isVideo(selectedVariantImage || productData?.images[selectedImageIndex]) ? (
+                <video
+                  src={selectedVariantImage || productData?.images[selectedImageIndex]}
+                  autoPlay
+                  loop
+                  muted
+                  controls
+                  className="w-full h-[400px] object-contain"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <img
+                  src={selectedVariantImage || productData?.images[selectedImageIndex]}
+                  alt="Selected Product"
+                  className="w-full min-h-[400px] h-full object-contain"
+                />
+              )}
+              <button
+                onClick={handlePrevImage}
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
               >
-                Your browser does not support the video tag.
-              </video>
-            ) : (
-              <img
-                src={selectedVariantImage || productData?.images[selectedImageIndex]}
-                alt="Selected Product"
-                className="w-full min-h-[400px] h-full object-contain"
-              />
-            )}
-            <button
-              onClick={handlePrevImage}
-              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
-            >
-              <IoIosArrowBack />
-            </button>
-            <button
-              onClick={handleNextImage}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
-            >
-              <IoIosArrowForward />
-            </button>
+                <IoIosArrowBack />
+              </button>
+              <button
+                onClick={handleNextImage}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
+              >
+                <IoIosArrowForward />
+              </button>
+            </div>
+            <div className="lg:hidden">
+              <Slider {...settings}>
+                {productData?.images?.map((media, idx) =>
+                  isVideo(media) ? (
+                    <video
+                      key={idx}
+                      src={media}
+                      className="w-full h-[400px] object-contain"
+                      autoPlay
+                      loop
+                      muted
+                      controls
+                    />
+                  ) : (
+                    <img
+                      key={idx}
+                      src={media}
+                      alt={`Thumbnail ${idx}`}
+                      className="w-full h-[400px] object-contain"
+                    />
+                  )
+                )}
+              </Slider>
+            </div>
           </div>
 
-          <div className="flex justify-center items-center space-x-2 overflow-x-auto">
+          <div className="hidden lg:flex justify-center items-center space-x-2 overflow-x-auto">
             {productData?.images?.map((media, idx) =>
               isVideo(media) ? (
                 <video
@@ -422,17 +446,17 @@ const ProductPage = () => {
               <span className="font-medium text-lg">Order Quantity: </span>
               <div className="flex items-center gap-2 mt-2">
                 <button
-                  onClick={() => handleQuantityChange(productData.variants ? selectedColor : 'base', -1)}
+                  onClick={() => handleQuantityChange(selectedColor, -1)}
                   className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
-                  disabled={isOrderQuantityZero}
+                  disabled={orderedQuantities[selectedColor] <= 0}
                 >
                   -
                 </button>
-                <span className="text-lg">{productData.variants ? orderedQuantities[selectedColor] : orderedQuantities.base}</span>
+                <span className="text-lg">{orderedQuantities[selectedColor]}</span>
                 <button
-                  onClick={() => handleQuantityChange(productData.variants ? selectedColor : 'base', 1)}
+                  onClick={() => handleQuantityChange(selectedColor, 1)}
                   className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
-                  disabled={orderedQuantities[productData.variants ? selectedColor : 'base'] >= availableQuantity}
+                  disabled={orderedQuantities[selectedColor] >= availableQuantity}
                 >
                   +
                 </button>
@@ -448,7 +472,7 @@ const ProductPage = () => {
             <div className="mt-6 flex flex-col md:flex-row gap-4">
               <SingleOrder
                 productName={productData?.name}
-                adiInfo={{ order: productData.variants ? orderedQuantities[selectedColor] : orderedQuantities.base, selectedImageIndex }}
+                adiInfo={{ order: orderedQuantities[selectedColor], selectedImageIndex }}
               />
               <button
                 onClick={handleCart}
@@ -581,4 +605,3 @@ const ProductPage = () => {
 };
 
 export default ProductPage;
-
