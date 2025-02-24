@@ -10,13 +10,13 @@ import useMainCategories from '../../../Hooks/useMainCategories';
 import useSubCategories from '../../../Hooks/useSubCategories';
 
 export default function UpdateProduct() {
-    const axiosPublic = useAxiosPublic(); 
+    const axiosPublic = useAxiosPublic();
     const [mainCategories] = useMainCategories();
     const [categories] = useCategories();
     const [subCategories] = useSubCategories();
     const { pname } = useParams(); // Assuming you use URL params to get the product ID
     const [name, setName] = useState('');
-    const [price, setPrice] = useState(0);  
+    const [price, setPrice] = useState(0);
     const [quantity, setQuantity] = useState(0);
     const [mainCategory, setMainCategory] = useState('');
     const [type, setType] = useState('');
@@ -33,12 +33,18 @@ export default function UpdateProduct() {
     const [selectedCategory, setSelectedCategory] = useState([]);
     const [selectedSubCategory, setSelectedSubCategory] = useState([]);
     const [variantInputs, setVariantInputs] = useState([
-        { name: '', image: null }, // Initial input
+        { name: '', image: null, quantity: 0 }, // Initial input
     ]);
 
     const handleVariantNameChange = (index, value) => {
         const updatedVariants = [...variantInputs];
         updatedVariants[index].name = value;
+        setVariantInputs(updatedVariants);
+    };
+
+    const handleVariantQuantityChange = (index, value) => {
+        const updatedVariants = [...variantInputs];
+        updatedVariants[index].quantity = value;
         setVariantInputs(updatedVariants);
     };
 
@@ -49,7 +55,7 @@ export default function UpdateProduct() {
     };
 
     const handleAddVariantInput = () => {
-        setVariantInputs([...variantInputs, { name: '', image: null }]);
+        setVariantInputs([...variantInputs, { name: '', image: null, quantity: 0 }]);
     };
 
     const handleRemoveVariantInput = (index) => {
@@ -57,17 +63,17 @@ export default function UpdateProduct() {
         setVariantInputs(updatedVariants);
     };
 
-    useEffect(()=>{
+    useEffect(() => {
         setSelectedCategory(
             categories?.filter(item => item?.mainCategory === mainCategory)
-        )
-    },[categories, mainCategory])
+        );
+    }, [categories, mainCategory]);
 
-    useEffect(()=>{
+    useEffect(() => {
         setSelectedSubCategory(
             subCategories?.filter(item => item?.category === type)
-        )
-    },[subCategories, type])
+        );
+    }, [subCategories, type]);
 
     useEffect(() => {
         // Fetch the existing product data when the component mounts
@@ -75,7 +81,7 @@ export default function UpdateProduct() {
             try {
                 const response = await axiosPublic.get(`/products/${pname}`);
                 const product = response.data;
-                
+
                 setName(product?.name || "");
                 setPrice(product?.price || 0);
                 setQuantity(product?.quantity || 0);
@@ -83,18 +89,18 @@ export default function UpdateProduct() {
                 setType(product?.category || "");
                 setSubCategory(product?.subCategory || "");
                 setDescription(product?.description || "");
-                setVariantInputs(product?.variants ? Object.entries(product.variants).map(([name, image]) => ({ name, image })) : []);
+                setVariantInputs(product?.variants ? Object.entries(product.variants).map(([name, { image, quantity }]) => ({ name, image, quantity })) : []);
                 setDetails(product?.details || "");
                 setImages(product?.images.map(img => ({ name: img, url: img })) || []);
                 setDiscount(product?.discount || 0);
-                setId(product?._id)
+                setId(product?._id);
             } catch (error) {
                 setMessage('Failed to fetch product data');
             }
         };
 
         fetchProductData();
-        setUpdate(false)
+        setUpdate(false);
     }, [pname, axiosPublic, update]);
 
     const handleImageChange = (event) => {
@@ -105,7 +111,7 @@ export default function UpdateProduct() {
     const uploadImage = async (file) => {
         const formData = new FormData();
         formData.append('file', file);
-
+    
         try {
             const response = await axios.post('https://server.allaboutcraftbd.com/upload', formData, {
                 headers: {
@@ -114,17 +120,20 @@ export default function UpdateProduct() {
             });
             return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`;
         } catch (error) {
+            // Log detailed error information
+            console.error('File upload failed:', error.response ? error.response.data : error.message);
             throw new Error('File upload failed');
         }
     };
+    
 
     const handleFormSubmit = async (event) => {
         event.preventDefault();
         setLoading(true);
-
+    
         try {
             let uploadedImageURLs = [];
-
+    
             // Upload images one by one
             for (const image of images) {
                 if (image instanceof File) {
@@ -135,27 +144,37 @@ export default function UpdateProduct() {
                     uploadedImageURLs.push(image.url);
                 }
             }
-
+    
             const uploadedVariantImages = await Promise.all(
-                variantInputs.map((variant) =>
-                    variant.image ? uploadImage(variant.image) : null
-                )
+                variantInputs.map(async (variant) => {
+                    if (variant.image instanceof File) {
+                        // Upload new file
+                        return await uploadImage(variant.image);
+                    } else if (typeof variant.image === 'string') {
+                        // Keep existing URL
+                        return variant.image;
+                    }
+                    return null;
+                })
             );
-
+    
             const variants = variantInputs.reduce((acc, variant, index) => {
                 if (variant.name && uploadedVariantImages[index]) {
-                    acc[variant.name] = uploadedVariantImages[index];
+                    acc[variant.name] = {
+                        image: uploadedVariantImages[index],
+                        quantity: variant.quantity
+                    };
                 }
                 return acc;
             }, {});
-
+    
             // Create updated product with uploaded file URLs
             const updatedProduct = {
                 name,
-                price:parseInt(price),
-                quantity:parseInt(quantity),
+                price: parseInt(price),
+                quantity: parseInt(quantity),
                 mainCategory,
-                category:type,
+                category: type,
                 subCategory,
                 description,
                 details,
@@ -163,19 +182,19 @@ export default function UpdateProduct() {
                 images: uploadedImageURLs,
                 discount: parseFloat(discount),
             };
-
+    
             const response = await axiosPublic.patch(`/updateProduct/${id}`, updatedProduct);
-
+    
             if (response?.data?.modifiedCount > 0) {
                 setUpdate(true);
-                navigate(`/products/${name}`)
+                navigate(`/products/${name}`);
                 Swal.fire({
                     position: "center",
                     icon: "success",
-                    title: `Product Update Successfully!😊😊`,
+                    title: `Product Updated Successfully!😊😊`,
                     showConfirmButton: false,
                     timer: 1000
-                  });
+                });
             } else {
                 console.error('Response data did not contain expected fields:', response.data);
                 Swal.fire({
@@ -184,15 +203,27 @@ export default function UpdateProduct() {
                     title: `Product Update Failed!😢😢`,
                     showConfirmButton: false,
                     timer: 1500
-                  });
+                });
             }
         } catch (error) {
-            console.error('Error:', error.response ? error.response.data : error.message);
-            setMessage('An error occurred while updating the product');
+            if (error.response) {
+                // Server responded with a status other than 2xx
+                console.error('Server Error:', error.response.data);
+                setMessage(`Server Error: ${error.response.data.message || 'Unknown error'}`);
+            } else if (error.request) {
+                // No response was received
+                console.error('Network Error:', error.message);
+                setMessage('Network Error: Unable to connect to the server');
+            } else {
+                // Something else caused the error
+                console.error('Error:', error.message);
+                setMessage('An unexpected error occurred');
+            }
         } finally {
             setLoading(false);
         }
     };
+ 
     return (
         <div className="py-5 max-w-[95%] 2xl:max-w-7xl mx-auto">
             <Helmet>
@@ -201,7 +232,7 @@ export default function UpdateProduct() {
             <h2 className="text-center text-4xl font-bold mb-5">Update Product</h2>
 
             <form className="space-y-4" onSubmit={handleFormSubmit}>
-            <div className="flex flex-col lg:flex-row">
+                <div className="flex flex-col lg:flex-row">
                     <div className="lg:w-1/2 pr-2">
                         <label className="text-lg font-medium">Name:</label><br />
                         <input
@@ -225,7 +256,7 @@ export default function UpdateProduct() {
                             required
                             placeholder='Enter The Product Category'
                         >
-                            <option value="">Select Main Category</option>{" "}
+                            <option value="">Select Main Category</option>
                             {
                                 mainCategories?.map((category, idx) =>
                                     <option key={idx} value={category?.name}>{category?.name}</option>
@@ -245,7 +276,7 @@ export default function UpdateProduct() {
                             required
                             placeholder='Enter The Product Category'
                         >
-                            <option value="">Select Category</option>{" "}
+                            <option value="">Select Category</option>
                             {
                                 selectedCategory?.map((category, idx) =>
                                     <option key={idx} value={category?.name}>{category?.name}</option>
@@ -262,7 +293,7 @@ export default function UpdateProduct() {
                             onChange={(e) => setSubCategory(e.target.value)}
                             placeholder='Enter The Product Category'
                         >
-                            <option value="">Select Sub Category</option>{" "}
+                            <option value="">Select Sub Category</option>
                             {
                                 selectedSubCategory?.map((category, idx) =>
                                     <option key={idx} value={category?.name}>{category?.name}</option>
@@ -332,7 +363,7 @@ export default function UpdateProduct() {
                     {/* Render Variant Inputs Only If Present */}
                     {variantInputs.map((variant, index) => (
                         <div key={index} className="flex flex-col lg:flex-row items-center mb-4">
-                            <div className="lg:w-1/2 pr-2">
+                            <div className="lg:w-1/3 pr-2">
                                 <label className="text-lg font-medium">Variant Name:</label>
                                 <input
                                     className="p-2 rounded bg-gray-200 w-full"
@@ -342,19 +373,29 @@ export default function UpdateProduct() {
                                     placeholder="Enter Variant Name"
                                 />
                             </div>
-                            <div className="lg:w-1/2 pl-2 flex items-center">
+                            <div className="lg:w-1/3 px-2">
+                                <label className="text-lg font-medium">Variant Quantity:</label>
+                                <input
+                                    className="p-2 rounded bg-gray-200 w-full"
+                                    type="number"
+                                    value={variant.quantity}
+                                    onChange={(e) => handleVariantQuantityChange(index, e.target.value)}
+                                    placeholder="Enter Variant Quantity"
+                                />
+                            </div>
+                            <div className="lg:w-1/3 pl-2 flex items-center">
                                 <div>
                                     <label className="text-lg font-medium">Variant Image:</label>
                                     <div className="flex flex-col lg:flex-row items-center">
                                         <input
                                             className="p-2 rounded bg-gray-200 w-full"
                                             type="file"
-                                            onChange={(e) => handleVariantImageChange(index, e.target.files[0])} // Handle image upload
+                                            onChange={(e) => handleVariantImageChange(index, e.target.files[0])}
                                         />
                                         <button
                                             type="button"
                                             className="ml-4 px-4 py-2 bg-red-500 text-white rounded"
-                                            onClick={() => handleRemoveVariantInput(index)} // Handle removing a variant input
+                                            onClick={() => handleRemoveVariantInput(index)}
                                         >
                                             Delete
                                         </button>
@@ -363,16 +404,6 @@ export default function UpdateProduct() {
                             </div>
                         </div>
                     ))}
-                    {variantInputs?.length > 0 && (
-                        <div>
-                            {variantInputs.map((variant, index) => (
-                                <div key={index}>
-                                    {/* Display the selected file name or URL */}
-                                    <div>File selected: {variant.image || 'No file selected'}</div> 
-                                </div>
-                            ))}
-                        </div>
-                    )}
                 </div>
 
                 <div>

@@ -35,7 +35,7 @@ export default function Footer() {
                 </div>
                 <div>
                     <hr />
-                    <p className="text-center text-lg py-5">All Copyright © 2024 <span className="text-[#885283]">All About Craft BD</span></p>
+                    <p className="text-center text-lg py-5">All Copyright © 2025 <span className="text-[#885283]">All About Craft BD</span></p>
                 </div>
             </div>
         </footer>

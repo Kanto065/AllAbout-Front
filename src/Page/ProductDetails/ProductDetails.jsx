@@ -54,15 +54,29 @@ const ProductPage = () => {
     }
   }, [axiosPublic, productName, productData?._id]);
 
-  // When productData loads, if variants exist, set the default selectedColor to the first variant key (if current selectedColor is not available)
+
   useEffect(() => {
     if (productData && productData.variants) {
       const variantKeys = Object.keys(productData.variants);
-      if (variantKeys.length > 0 && !variantKeys.includes(selectedColor)) {
-        setSelectedColor(variantKeys[0]);
-        setSelectedVariantImage(productData.variants[variantKeys[0]].image);
-        setOrderedQuantities((prev) => ({ ...prev, [variantKeys[0]]: 1 }));
+      if (variantKeys.length > 0) {
+        // Initialize orderedQuantities for each variant
+        const initialQuantities = variantKeys.reduce((acc, color) => {
+          acc[color] = acc[color] || 0; // Initialize to 0 or keep existing value
+          return acc;
+        }, { ...orderedQuantities });
+
+        setOrderedQuantities(initialQuantities);
+
+        // Set the default selected color and image if not already set
+        if (!variantKeys.includes(selectedColor)) {
+          setSelectedColor(variantKeys[0]);
+          setSelectedVariantImage(productData.variants[variantKeys[0]].image);
+        }
       }
+    } else {
+      // If no variants, initialize with product quantity
+      setOrderedQuantities((prev) => ({ ...prev, base: 1 })); // Set initial quantity to 1
+
     }
   }, [productData, selectedColor]);
 
@@ -77,21 +91,25 @@ const ProductPage = () => {
   };
 
   useEffect(() => {
-    const sanitizedHTML = DOMPurify.sanitize(productData?.details);
-    const content = <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
-    setDetails(content);
+    if (productData?.details) {
+      const sanitizedHTML = DOMPurify.sanitize(productData.details);
+      const content = <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
+      setDetails(content);
+    }
   }, [productData]);
 
   const handleNextImage = () => {
     setSelectedImageIndex(
-      (prevIndex) => (prevIndex + 1) % productData?.images.length
+      (prevIndex) => (prevIndex + 1) % (productData?.images?.length || 1)
     );
   };
 
   const handlePrevImage = () => {
     setSelectedImageIndex(
       (prevIndex) =>
-        (prevIndex - 1 + productData?.images.length) % productData?.images.length
+
+        (prevIndex - 1 + (productData?.images?.length || 1)) % (productData?.images?.length || 1)
+
     );
   };
 
@@ -119,7 +137,9 @@ const ProductPage = () => {
     const cart = {
       email: databaseUser?.email,
       productId: productData?._id,
-      quantity: orderedQuantities[selectedColor],
+
+      quantity: productData.variants ? orderedQuantities[selectedColor] : 1,
+
       code: "CODE" + (selectedImageIndex + 1),
     };
 
@@ -271,9 +291,6 @@ const ProductPage = () => {
     );
   }
 
-  const selectedVariant = productData.variants[selectedColor];
-  const availableQuantity = selectedVariant ? selectedVariant.quantity : productData.quantity;
-  const isOrderQuantityZero = orderedQuantities[selectedColor] === 0;
 
   const settings = {
     dots: true,
@@ -283,6 +300,10 @@ const ProductPage = () => {
     slidesToScroll: 1,
     arrows: false,
   };
+
+  const selectedVariant = productData.variants ? productData.variants[selectedColor] : null;
+  const availableQuantity = selectedVariant ? selectedVariant.quantity : productData.quantity;
+  const isOrderQuantityZero = productData.variants ? orderedQuantities[selectedColor] === 0 : orderedQuantities.base === 0;
 
   return (
     <div className="max-w-[95%] 2xl:max-w-7xl mx-auto pt-32 md:pt-48 pb-10">
@@ -446,17 +467,17 @@ const ProductPage = () => {
               <span className="font-medium text-lg">Order Quantity: </span>
               <div className="flex items-center gap-2 mt-2">
                 <button
-                  onClick={() => handleQuantityChange(selectedColor, -1)}
+                  onClick={() => handleQuantityChange(productData.variants ? selectedColor : 'base', -1)}
                   className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
-                  disabled={orderedQuantities[selectedColor] <= 0}
+                  disabled={isOrderQuantityZero}
                 >
                   -
                 </button>
-                <span className="text-lg">{orderedQuantities[selectedColor]}</span>
+                <span className="text-lg">{productData.variants ? orderedQuantities[selectedColor] : orderedQuantities.base}</span>
                 <button
-                  onClick={() => handleQuantityChange(selectedColor, 1)}
+                  onClick={() => handleQuantityChange(productData.variants ? selectedColor : 'base', 1)}
                   className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
-                  disabled={orderedQuantities[selectedColor] >= availableQuantity}
+                  disabled={orderedQuantities[productData.variants ? selectedColor : 'base'] >= availableQuantity}
                 >
                   +
                 </button>
@@ -472,7 +493,7 @@ const ProductPage = () => {
             <div className="mt-6 flex flex-col md:flex-row gap-4">
               <SingleOrder
                 productName={productData?.name}
-                adiInfo={{ order: orderedQuantities[selectedColor], selectedImageIndex }}
+                adiInfo={{ order: productData.variants ? orderedQuantities[selectedColor] : orderedQuantities.base, selectedImageIndex }}
               />
               <button
                 onClick={handleCart}
@@ -605,3 +626,4 @@ const ProductPage = () => {
 };
 
 export default ProductPage;
+
