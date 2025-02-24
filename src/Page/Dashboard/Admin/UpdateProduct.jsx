@@ -111,7 +111,7 @@ export default function UpdateProduct() {
     const uploadImage = async (file) => {
         const formData = new FormData();
         formData.append('file', file);
-
+    
         try {
             const response = await axios.post('https://server.allaboutcraftbd.com/upload', formData, {
                 headers: {
@@ -120,17 +120,20 @@ export default function UpdateProduct() {
             });
             return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`;
         } catch (error) {
+            // Log detailed error information
+            console.error('File upload failed:', error.response ? error.response.data : error.message);
             throw new Error('File upload failed');
         }
     };
+    
 
     const handleFormSubmit = async (event) => {
         event.preventDefault();
         setLoading(true);
-
+    
         try {
             let uploadedImageURLs = [];
-
+    
             // Upload images one by one
             for (const image of images) {
                 if (image instanceof File) {
@@ -141,13 +144,20 @@ export default function UpdateProduct() {
                     uploadedImageURLs.push(image.url);
                 }
             }
-
+    
             const uploadedVariantImages = await Promise.all(
-                variantInputs.map((variant) =>
-                    variant.image ? uploadImage(variant.image) : null
-                )
+                variantInputs.map(async (variant) => {
+                    if (variant.image instanceof File) {
+                        // Upload new file
+                        return await uploadImage(variant.image);
+                    } else if (typeof variant.image === 'string') {
+                        // Keep existing URL
+                        return variant.image;
+                    }
+                    return null;
+                })
             );
-
+    
             const variants = variantInputs.reduce((acc, variant, index) => {
                 if (variant.name && uploadedVariantImages[index]) {
                     acc[variant.name] = {
@@ -157,7 +167,7 @@ export default function UpdateProduct() {
                 }
                 return acc;
             }, {});
-
+    
             // Create updated product with uploaded file URLs
             const updatedProduct = {
                 name,
@@ -172,9 +182,9 @@ export default function UpdateProduct() {
                 images: uploadedImageURLs,
                 discount: parseFloat(discount),
             };
-
+    
             const response = await axiosPublic.patch(`/updateProduct/${id}`, updatedProduct);
-
+    
             if (response?.data?.modifiedCount > 0) {
                 setUpdate(true);
                 navigate(`/products/${name}`);
@@ -196,13 +206,24 @@ export default function UpdateProduct() {
                 });
             }
         } catch (error) {
-            console.error('Error:', error.response ? error.response.data : error.message);
-            setMessage('An error occurred while updating the product');
+            if (error.response) {
+                // Server responded with a status other than 2xx
+                console.error('Server Error:', error.response.data);
+                setMessage(`Server Error: ${error.response.data.message || 'Unknown error'}`);
+            } else if (error.request) {
+                // No response was received
+                console.error('Network Error:', error.message);
+                setMessage('Network Error: Unable to connect to the server');
+            } else {
+                // Something else caused the error
+                console.error('Error:', error.message);
+                setMessage('An unexpected error occurred');
+            }
         } finally {
             setLoading(false);
         }
     };
-
+ 
     return (
         <div className="py-5 max-w-[95%] 2xl:max-w-7xl mx-auto">
             <Helmet>
