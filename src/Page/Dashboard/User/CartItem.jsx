@@ -102,7 +102,7 @@ export default function CartItem({ product, reload, message }) {
         <img
           src={product?.images[0]}
           alt={product?.name}
-          className="h-32 w-1/5 object-cover bg-gray-300 opacity-50"
+          className="h-32 w-full md:w-1/5 object-contain bg-gray-300 opacity-50"
         />
         <div className="w-4/5 flex flex-row justify-between items-center">
           <div className="w-4/5 flex flex-col">
@@ -127,7 +127,7 @@ export default function CartItem({ product, reload, message }) {
       <img
         src={product?.images[0]}
         alt={product?.name}
-        className="h-32 w-1/5 object-cover bg-gray-300"
+        className="h-32 w-full md:w-1/5 object-contain bg-gray-300"
       />
       <div className="w-4/5 flex flex-col justify-between">
         <h2 className="font-medium text-xl">{product?.name}</h2>
