@@ -16,6 +16,9 @@ import Swal from "sweetalert2";
 import Wish from "../../Components/Icons/Wish";
 import SingleOrder from "../../Components/PopUp/SingleOrder";
 import { FaStar } from "react-icons/fa";
+import Slider from "react-slick"; // Import react-slick
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
 
 const ProductPage = () => {
   const { user } = useAuth();
@@ -51,6 +54,7 @@ const ProductPage = () => {
     }
   }, [axiosPublic, productName, productData?._id]);
 
+
   useEffect(() => {
     if (productData && productData.variants) {
       const variantKeys = Object.keys(productData.variants);
@@ -72,6 +76,7 @@ const ProductPage = () => {
     } else {
       // If no variants, initialize with product quantity
       setOrderedQuantities((prev) => ({ ...prev, base: 1 })); // Set initial quantity to 1
+
     }
   }, [productData, selectedColor]);
 
@@ -102,7 +107,9 @@ const ProductPage = () => {
   const handlePrevImage = () => {
     setSelectedImageIndex(
       (prevIndex) =>
+
         (prevIndex - 1 + (productData?.images?.length || 1)) % (productData?.images?.length || 1)
+
     );
   };
 
@@ -130,7 +137,9 @@ const ProductPage = () => {
     const cart = {
       email: databaseUser?.email,
       productId: productData?._id,
+
       quantity: productData.variants ? orderedQuantities[selectedColor] : 1,
+
       code: "CODE" + (selectedImageIndex + 1),
     };
 
@@ -282,6 +291,16 @@ const ProductPage = () => {
     );
   }
 
+
+  const settings = {
+    dots: true,
+    infinite: true,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    arrows: false,
+  };
+
   const selectedVariant = productData.variants ? productData.variants[selectedColor] : null;
   const availableQuantity = selectedVariant ? selectedVariant.quantity : productData.quantity;
   const isOrderQuantityZero = productData.variants ? orderedQuantities[selectedColor] === 0 : orderedQuantities.base === 0;
@@ -292,39 +311,65 @@ const ProductPage = () => {
         {/* Left - Product Images */}
         <div className="flex-1 w-full mx-auto">
           <div className="relative rounded-lg overflow-hidden bg-white mb-4 lg:w-10/12 mx-auto">
-            {isVideo(selectedVariantImage || productData?.images[selectedImageIndex]) ? (
-              <video
-                src={selectedVariantImage || productData?.images[selectedImageIndex]}
-                autoPlay
-                loop
-                muted
-                controls
-                className="w-full h-[400px] object-contain"
+            <div className="hidden lg:block">
+              {isVideo(selectedVariantImage || productData?.images[selectedImageIndex]) ? (
+                <video
+                  src={selectedVariantImage || productData?.images[selectedImageIndex]}
+                  autoPlay
+                  loop
+                  muted
+                  controls
+                  className="w-full h-[400px] object-contain"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <img
+                  src={selectedVariantImage || productData?.images[selectedImageIndex]}
+                  alt="Selected Product"
+                  className="w-full min-h-[400px] h-full object-contain"
+                />
+              )}
+              <button
+                onClick={handlePrevImage}
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
               >
-                Your browser does not support the video tag.
-              </video>
-            ) : (
-              <img
-                src={selectedVariantImage || productData?.images[selectedImageIndex]}
-                alt="Selected Product"
-                className="w-full min-h-[400px] h-full object-contain"
-              />
-            )}
-            <button
-              onClick={handlePrevImage}
-              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
-            >
-              <IoIosArrowBack />
-            </button>
-            <button
-              onClick={handleNextImage}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
-            >
-              <IoIosArrowForward />
-            </button>
+                <IoIosArrowBack />
+              </button>
+              <button
+                onClick={handleNextImage}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
+              >
+                <IoIosArrowForward />
+              </button>
+            </div>
+            <div className="lg:hidden">
+              <Slider {...settings}>
+                {productData?.images?.map((media, idx) =>
+                  isVideo(media) ? (
+                    <video
+                      key={idx}
+                      src={media}
+                      className="w-full h-[400px] object-contain"
+                      autoPlay
+                      loop
+                      muted
+                      controls
+                    />
+                  ) : (
+                    <img
+                      key={idx}
+                      src={media}
+                      alt={`Thumbnail ${idx}`}
+                      className="w-full h-[400px] object-contain"
+                    />
+                  )
+                )}
+              </Slider>
+            </div>
           </div>
 
-          <div className="flex justify-center items-center space-x-2 overflow-x-auto">
+          <div className="hidden lg:flex justify-center items-center space-x-2 overflow-x-auto">
             {productData?.images?.map((media, idx) =>
               isVideo(media) ? (
                 <video
