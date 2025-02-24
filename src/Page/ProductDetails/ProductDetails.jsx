@@ -16,6 +16,9 @@ import Swal from "sweetalert2";
 import Wish from "../../Components/Icons/Wish";
 import SingleOrder from "../../Components/PopUp/SingleOrder";
 import { FaStar } from "react-icons/fa";
+import Slider from "react-slick"; // Import react-slick
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
 
 const ProductPage = () => {
   const { user } = useAuth();
@@ -23,32 +26,45 @@ const ProductPage = () => {
   const [databaseUser, refetch] = useDatabaseUser();
   const [productData, setProductData] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [orderedQuantity, setOrderedQuantity] = useState(1);
+  const [orderedQuantities, setOrderedQuantities] = useState({});
   const [details, setDetails] = useState(null);
-  const [selectedColor, setSelectedColor] = useState("Grey");
-  const [selectedSize, setSelectedSize] = useState(34);
+  const [selectedColor, setSelectedColor] = useState("");
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(null);
   const [reviewText, setReviewText] = useState("");
   const [reviews, setReviews] = useState([]);
   const [reviewImage, setReviewImage] = useState(null);
   const [averageRating, setAverageRating] = useState(0);
+  const [selectedVariantImage, setSelectedVariantImage] = useState(null);
   const { name: productName } = useParams();
   const location = useLocation()?.pathname;
   const navigate = useNavigate();
 
-  const colors = ["Grey", "Green", "Pink", "Yellow", "Blue"];
-  const sizes = [34, 36, 38, 40, 42, 44, 46, 48, 50];
   useEffect(() => {
-    axiosPublic
-      .get(`/products/${productName}`)
-      .then((data) => setProductData(data?.data));
-
-    axiosPublic.get(`/reviews/${productName}`).then((data) => {
-      setReviews(data?.data || []);
-      calculateAverageRating(data?.data || []);
+    axiosPublic.get(`/products/${productName}`).then((data) => {
+      setProductData(data?.data);
     });
-  }, [axiosPublic, productName]);
+
+    if (productData?._id) {
+      axiosPublic.get(`/reviews/${productData?._id}`).then((data) => {
+        const reviewsData = data?.data || [];
+        setReviews(reviewsData);
+        calculateAverageRating(reviewsData);
+      });
+    }
+  }, [axiosPublic, productName, productData?._id]);
+
+  // When productData loads, if variants exist, set the default selectedColor to the first variant key (if current selectedColor is not available)
+  useEffect(() => {
+    if (productData && productData.variants) {
+      const variantKeys = Object.keys(productData.variants);
+      if (variantKeys.length > 0 && !variantKeys.includes(selectedColor)) {
+        setSelectedColor(variantKeys[0]);
+        setSelectedVariantImage(productData.variants[variantKeys[0]].image);
+        setOrderedQuantities((prev) => ({ ...prev, [variantKeys[0]]: 1 }));
+      }
+    }
+  }, [productData, selectedColor]);
 
   const calculateAverageRating = (reviews) => {
     if (reviews.length === 0) {
@@ -75,8 +91,7 @@ const ProductPage = () => {
   const handlePrevImage = () => {
     setSelectedImageIndex(
       (prevIndex) =>
-        (prevIndex - 1 + productData?.images.length) %
-        productData?.images.length
+        (prevIndex - 1 + productData?.images.length) % productData?.images.length
     );
   };
 
@@ -104,7 +119,7 @@ const ProductPage = () => {
     const cart = {
       email: databaseUser?.email,
       productId: productData?._id,
-      quantity: orderedQuantity,
+      quantity: orderedQuantities[selectedColor],
       code: "CODE" + (selectedImageIndex + 1),
     };
 
@@ -150,17 +165,21 @@ const ProductPage = () => {
 
   const uploadImage = async (file) => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     try {
-      const response = await axiosPublic.post('https://server.allaboutcraftbd.com/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await axiosPublic.post(
+        "https://server.allaboutcraftbd.com/upload",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
       return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`; // Adjust according to your server response
     } catch (error) {
-      throw new Error('File upload failed');
+      throw new Error("File upload failed");
     }
   };
 
@@ -169,10 +188,6 @@ const ProductPage = () => {
       navigate("/login", { state: { from: location } });
       return;
     }
-
-    const formData = new FormData();
-    formData.append("rating", rating);
-    formData.append("comment", reviewText);
 
     let imageURL = null;
     if (reviewImage) {
@@ -197,18 +212,22 @@ const ProductPage = () => {
     console.log("Review Data:", reviewData); // Log the review data being sent
 
     try {
-      const response = await axiosPublic.post(`/products/${productData?._id}/reviews`, reviewData);
+      const response = await axiosPublic.post(
+        `/reviews/${productData?._id}`,
+        reviewData
+      );
       console.log("Review Submission Response:", response); // Log the response from the server
       if (response?.data?.insertedId) {
         Swal.fire({
           icon: "success",
           title: "Review submitted successfully",
         });
-        setReviews([...reviews, reviewData]);
+        const updatedReviews = [...reviews, reviewData];
+        setReviews(updatedReviews);
         setRating(0);
         setReviewText("");
         setReviewImage(null);
-        calculateAverageRating([...reviews, reviewData]);
+        calculateAverageRating(updatedReviews);
       } else {
         Swal.fire({
           icon: "error",
@@ -224,13 +243,25 @@ const ProductPage = () => {
     }
   };
 
-  const isVideo = (url) =>
-    url?.endsWith(".mp4") ||
-    url?.endsWith(".webm") ||
-    url?.endsWith(".ogg") ||
-    url?.endsWith(".mov") ||
-    url?.endsWith(".avi") ||
-    url?.endsWith(".mkv");
+  const isVideo = (url) => {
+    if (typeof url !== 'string') return false;
+    return (
+      url.endsWith(".mp4") ||
+      url.endsWith(".webm") ||
+      url.endsWith(".ogg") ||
+      url.endsWith(".mov") ||
+      url.endsWith(".avi") ||
+      url.endsWith(".mkv")
+    );
+  };
+
+  const handleQuantityChange = (variant, amount) => {
+    setOrderedQuantities((prev) => {
+      const newQuantity = (prev[variant] || 0) + amount;
+      if (newQuantity < 0) return prev;
+      return { ...prev, [variant]: newQuantity };
+    });
+  };
 
   if (!productData) {
     return (
@@ -240,56 +271,98 @@ const ProductPage = () => {
     );
   }
 
+  const selectedVariant = productData.variants[selectedColor];
+  const availableQuantity = selectedVariant ? selectedVariant.quantity : productData.quantity;
+  const isOrderQuantityZero = orderedQuantities[selectedColor] === 0;
+
+  const settings = {
+    dots: true,
+    infinite: true,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    arrows: false,
+  };
+
   return (
     <div className="max-w-[95%] 2xl:max-w-7xl mx-auto pt-32 md:pt-48 pb-10">
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Left - Product Images */}
         <div className="flex-1 w-full mx-auto">
           <div className="relative rounded-lg overflow-hidden bg-white mb-4 lg:w-10/12 mx-auto">
-            {isVideo(productData?.images[selectedImageIndex]) ? (
-              <video
-                src={productData?.images[selectedImageIndex]}
-                autoPlay
-                loop
-                muted
-                controls
-                className="w-full h-[400px] object-contain"
+            <div className="hidden lg:block">
+              {isVideo(selectedVariantImage || productData?.images[selectedImageIndex]) ? (
+                <video
+                  src={selectedVariantImage || productData?.images[selectedImageIndex]}
+                  autoPlay
+                  loop
+                  muted
+                  controls
+                  className="w-full h-[400px] object-contain"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <img
+                  src={selectedVariantImage || productData?.images[selectedImageIndex]}
+                  alt="Selected Product"
+                  className="w-full min-h-[400px] h-full object-contain"
+                />
+              )}
+              <button
+                onClick={handlePrevImage}
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
               >
-                Your browser does not support the video tag.
-              </video>
-            ) : (
-              <img
-                src={productData?.images[selectedImageIndex]}
-                alt="Selected Product"
-                className="w-full min-h-[400px] h-full object-contain"
-              />
-            )}
-            <button
-              onClick={handlePrevImage}
-              className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
-            >
-              <IoIosArrowBack />
-            </button>
-            <button
-              onClick={handleNextImage}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
-            >
-              <IoIosArrowForward />
-            </button>
+                <IoIosArrowBack />
+              </button>
+              <button
+                onClick={handleNextImage}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 rounded-full text-3xl hover:bg-gray-200"
+              >
+                <IoIosArrowForward />
+              </button>
+            </div>
+            <div className="lg:hidden">
+              <Slider {...settings}>
+                {productData?.images?.map((media, idx) =>
+                  isVideo(media) ? (
+                    <video
+                      key={idx}
+                      src={media}
+                      className="w-full h-[400px] object-contain"
+                      autoPlay
+                      loop
+                      muted
+                      controls
+                    />
+                  ) : (
+                    <img
+                      key={idx}
+                      src={media}
+                      alt={`Thumbnail ${idx}`}
+                      className="w-full h-[400px] object-contain"
+                    />
+                  )
+                )}
+              </Slider>
+            </div>
           </div>
 
-          <div className="flex justify-center items-center space-x-2 overflow-x-auto">
+          <div className="hidden lg:flex justify-center items-center space-x-2 overflow-x-auto">
             {productData?.images?.map((media, idx) =>
               isVideo(media) ? (
                 <video
                   key={idx}
                   src={media}
                   className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx
+                    selectedImageIndex === idx && !selectedVariantImage
                       ? "border-blue-600"
                       : "border-gray-300"
                   }`}
-                  onClick={() => setSelectedImageIndex(idx)}
+                  onClick={() => {
+                    setSelectedImageIndex(idx);
+                    setSelectedVariantImage(null);
+                  }}
                   muted
                 />
               ) : (
@@ -298,11 +371,14 @@ const ProductPage = () => {
                   src={media}
                   alt={`Thumbnail ${idx}`}
                   className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx
+                    selectedImageIndex === idx && !selectedVariantImage
                       ? "border-blue-600"
                       : "border-gray-300"
                   }`}
-                  onClick={() => setSelectedImageIndex(idx)}
+                  onClick={() => {
+                    setSelectedImageIndex(idx);
+                    setSelectedVariantImage(null);
+                  }}
                 />
               )
             )}
@@ -329,114 +405,79 @@ const ProductPage = () => {
             </span>
           </div>
 
-          {/* Product Code */}
+          {/* Available Quantity */}
           <div className="mt-2">
-            <span className="font-medium text-lg">Product Code: </span>
-            <span className="text-lg">CODE{selectedImageIndex + 1}</span>
+            <span className="font-medium text-lg">Available Quantity: </span>
+            <span className="text-lg">{availableQuantity}</span>
           </div>
 
-          {/* Color Family - Added Section */}
-          {productData?.colorFamily?.length > 0 && (
-            <div className="mt-2">
-              <span className="font-medium text-lg">Color Family: </span>
-              <div className="flex gap-2 mt-2">
-                {productData.colorFamily.map((color, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImageIndex(index)}
-                    className={`px-4 py-1 rounded-full border-2 ${
-                      selectedImageIndex === index
-                        ? "border-blue-500 font-medium"
-                        : "border-gray-300"
-                    }`}
-                  >
-                    {color}
-                  </button>
-                ))}
+          {/* Color Variant Selection using productData.variants */}
+          {productData?.variants && (
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold">
+                Product Variant: {selectedColor}
+              </h3>
+              <div className="flex space-x-2 mt-2">
+                {Object.entries(productData.variants).map(
+                  ([color, { image }], index) => (
+                    <img
+                      key={index}
+                      src={image}
+                      alt={color}
+                      className={`w-12 h-12 rounded-lg cursor-pointer border-2 ${
+                        selectedColor === color
+                          ? "border-orange-500"
+                          : "border-gray-200"
+                      }`}
+                      onClick={() => {
+                        setSelectedColor(color);
+                        setSelectedVariantImage(image);
+                      }}
+                    />
+                  )
+                )}
               </div>
             </div>
           )}
 
           {/* Quantity Selector */}
-          <div className={`mt-4 ${productData?.quantity < 1 && "hidden"}`}>
+          <div className={`mt-4`}>
             <div className="flex items-center space-x-2">
               <span className="font-medium text-lg">Order Quantity: </span>
               <div className="flex items-center gap-2 mt-2">
                 <button
-                  onClick={() => setOrderedQuantity(orderedQuantity - 1)}
+                  onClick={() => handleQuantityChange(selectedColor, -1)}
                   className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
-                  disabled={orderedQuantity <= 1}
+                  disabled={orderedQuantities[selectedColor] <= 0}
                 >
                   -
                 </button>
-                <span className="text-lg">{orderedQuantity}</span>
+                <span className="text-lg">{orderedQuantities[selectedColor]}</span>
                 <button
-                  disabled={orderedQuantity >= productData?.quantity}
-                  onClick={() => setOrderedQuantity(orderedQuantity + 1)}
-                  className=" px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
+                  onClick={() => handleQuantityChange(selectedColor, 1)}
+                  className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
+                  disabled={orderedQuantities[selectedColor] >= availableQuantity}
                 >
                   +
                 </button>
               </div>
             </div>
-            <p className={`font-medium text-lg mt-2 ${productData?.quantity < 1 && "hidden"}`}>
-              Available Quantity: {productData?.quantity}
+          </div>
+
+          {availableQuantity < 1 ? (
+            <p className="text-xl font-semibold text-orange-500 mt-4">
+              Stock Out
             </p>
-          </div>
-
-         
-
-          <div className="mt-6">
-            <h2 className="text-lg font-medium mb-2">Product Description</h2>
-            <p className="text-gray-700">{productData?.description}</p>
-          </div>
-
-          {/* Color and Size Selection */}
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold">Color Variant: {selectedColor}</h3>
-            <div className="flex space-x-2 mt-2">
-              {colors.map((color, index) => (
-                <img
-                  key={index}
-                  src={`/path-to-${color.toLowerCase()}.jpg`}
-                  alt={color}
-                  className={`w-12 h-12 rounded-lg cursor-pointer border-2 ${
-                    selectedColor === color ? "border-orange-500" : "border-gray-200"
-                  }`}
-                  onClick={() => setSelectedColor(color)}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold">Size</h3>
-            <div className="flex space-x-2 mt-2">
-              {sizes.map((size) => (
-                <button
-                  key={size}
-                  className={`px-4 py-2 border ${
-                    selectedSize === size ? "bg-orange-500 text-white" : "bg-gray-100"
-                  } rounded-lg cursor-pointer`}
-                  onClick={() => setSelectedSize(size)}
-                >
-                  {size}
-                </button>
-              ))}
-              
-            </div>
-          </div>
-          {productData?.quantity < 1 ? (
-            <p className="text-xl font-semibold text-orange-500 mt-4">Stock Out</p>
           ) : (
             <div className="mt-6 flex flex-col md:flex-row gap-4">
               <SingleOrder
                 productName={productData?.name}
-                adiInfo={{ order: orderedQuantity, selectedImageIndex }}
+                adiInfo={{ order: orderedQuantities[selectedColor], selectedImageIndex }}
               />
               <button
                 onClick={handleCart}
-                className="px-6 py-3 bg-[#7dd67d] text-white rounded-lg transition"
+                className={`px-6 py-3 bg-[#7dd67d] text-white rounded-lg transition ${isOrderQuantityZero ? "opacity-50 cursor-not-allowed" : ""}`}
+                disabled={isOrderQuantityZero}
               >
                 Add to Cart
               </button>
@@ -450,10 +491,13 @@ const ProductPage = () => {
               className="cursor-pointer"
             />
           </div>
+
+          <div className="mt-6">
+            <h2 className="text-lg font-medium mb-2">Product Description</h2>
+            <p className="text-gray-700">{productData?.description}</p>
+          </div>
         </div>
       </div>
-
-      
 
       <div className="mt-6">
         <h2 className="text-lg font-medium mb-2">Product Details</h2>
@@ -494,6 +538,26 @@ const ProductPage = () => {
                     className="mt-2 w-32 h-32 object-cover"
                   />
                 )}
+                {/* Display selected product variant images */}
+                {productData?.variants && (
+                  <div className="mt-2">
+                    <h4 className="text-lg font-medium mb-2">
+                      Selected Product Variants
+                    </h4>
+                    <div className="flex space-x-2">
+                      {Object.entries(productData.variants).map(
+                        ([color, { image }], index) => (
+                          <img
+                            key={index}
+                            src={image}
+                            alt={color}
+                            className="w-12 h-12 rounded-lg cursor-pointer border-2 border-gray-200"
+                          />
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))
           ) : (
@@ -507,7 +571,7 @@ const ProductPage = () => {
             {[...Array(5)].map((_, i) => (
               <FaStar
                 key={i}
-                color={i < hover || i < rating ? "#ffc107" : "#e4e5e9"}
+                color={i < (hover || rating) ? "#ffc107" : "#e4e5e9"}
                 onClick={() => setRating(i + 1)}
                 onMouseEnter={() => setHover(i + 1)}
                 onMouseLeave={() => setHover(null)}
