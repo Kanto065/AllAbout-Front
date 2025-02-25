@@ -3,18 +3,36 @@ import useAxiosPublic from "../../../Hooks/useAxiosPublic";
 import Swal from "sweetalert2";
 import { MdDelete } from "react-icons/md";
 import useDatabaseUser from "../../../Hooks/useDatabaseUser";
+import { FaStar } from "react-icons/fa";
 
 export default function CartItem({ product, reload, message }) {
   const [databaseUser] = useDatabaseUser();
   const axiosPublic = useAxiosPublic();
   const [addQuantity, setAddQuantity] = useState(product?.orderedQuantity);
   const [databaseProduct, setDatabaseProduct] = useState({});
+  const [reviews, setReviews] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
 
   useEffect(() => {
     axiosPublic
       .get(`/products/${product?.name}`)
       .then((data) => setDatabaseProduct(data?.data));
+
+    axiosPublic.get(`/reviews/${product?.name}`).then((data) => {
+      setReviews(data?.data || []);
+      calculateAverageRating(data?.data || []);
+    });
   }, [product, axiosPublic]);
+
+  const calculateAverageRating = (reviews) => {
+    if (reviews.length === 0) {
+      setAverageRating(0);
+      return;
+    }
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    const average = totalRating / reviews.length;
+    setAverageRating(average);
+  };
 
   const handleCart = async (x) => {
     const cart = {
@@ -84,7 +102,7 @@ export default function CartItem({ product, reload, message }) {
         <img
           src={product?.images[0]}
           alt={product?.name}
-          className="h-32 w-1/5 object-cover bg-gray-300 opacity-50"
+          className="h-32 w-full md:w-1/5 object-contain bg-gray-300 opacity-50"
         />
         <div className="w-4/5 flex flex-row justify-between items-center">
           <div className="w-4/5 flex flex-col">
@@ -106,11 +124,13 @@ export default function CartItem({ product, reload, message }) {
 
   return (
     <div className="border-b transition duration-300 flex space-x-5 pb-2">
-      <img
-        src={product?.images[0]}
-        alt={product?.name}
-        className="h-32 w-1/5 object-cover bg-gray-300"
-      />
+      <div className="flex items-center justify-center w-1/5 md:w-1/5">
+        <img
+          src={product?.images[0]}
+          alt={product?.name}
+          className="h-32 w-full object-contain bg-gray-300"
+        />
+      </div>
       <div className="w-4/5 flex flex-col justify-between">
         <h2 className="font-medium text-xl">{product?.name}</h2>
         <p className="text-lg font-medium">
@@ -125,7 +145,8 @@ export default function CartItem({ product, reload, message }) {
           )?.toFixed(2)}
           ৳
         </p>
-        <p className="text-gray-600">P_Code: {product?.code}</p>
+
+        <p className="text-gray-600">Product Variant {product?.variant}</p>
         <div className="w-full flex justify-between">
           <div className="flex justify-start items-center space-x-5">
             <button
@@ -158,6 +179,21 @@ export default function CartItem({ product, reload, message }) {
           >
             <MdDelete className="mr-2"></MdDelete> Delete
           </button>
+        </div>
+
+        <div className="mt-4">
+          <div className="flex items-center space-x-1">
+            <span className="font-medium text-lg">Average Rating:</span>
+            <div className="flex items-center space-x-1">
+              {[...Array(5)].map((_, i) => (
+                <FaStar
+                  key={i}
+                  color={i < averageRating ? "#ffc107" : "#e4e5e9"}
+                />
+              ))}
+            </div>
+            <span className="text-lg">{averageRating.toFixed(1)}</span>
+          </div>
         </div>
       </div>
     </div>

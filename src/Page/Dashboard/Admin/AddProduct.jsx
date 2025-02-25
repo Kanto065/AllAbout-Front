@@ -20,25 +20,53 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
     const [type, setType] = useState('');
     const [subCategory, setSubCategory] = useState('');
     const [description, setDescription] = useState('');
-    const [details, setDetails] = useState(``);
+    const [details, setDetails] = useState('');
     const [images, setImages] = useState([]);
     const [discount, setDiscount] = useState(0);
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState([]);
     const [selectedSubCategory, setSelectedSubCategory] = useState([]);
+    const [variants, setVariants] = useState([{ name: '', image: null, quantity: 0 }]);
 
-    useEffect(()=>{
+    const handleVariantNameChange = (index, value) => {
+        const updatedVariants = [...variants];
+        updatedVariants[index].name = value;
+        setVariants(updatedVariants);
+    };
+
+    const handleVariantQuantityChange = (index, value) => {
+        const updatedVariants = [...variants];
+        updatedVariants[index].quantity = value;
+        setVariants(updatedVariants);
+    };
+
+    const handleVariantImageChange = (index, file) => {
+        const updatedVariants = [...variants];
+        updatedVariants[index].image = file;
+        setVariants(updatedVariants);
+    };
+
+    const handleAddVariantInput = () => {
+        setVariants([...variants, { name: '', image: null, quantity: 0 }]);
+    };
+
+    const handleRemoveVariantInput = (index) => {
+        const updatedVariants = variants.filter((_, i) => i !== index);
+        setVariants(updatedVariants);
+    };
+
+    useEffect(() => {
         setSelectedCategory(
             categories?.filter(item => item?.mainCategory === mainCategory)
-        )
-    },[categories, mainCategory])
+        );
+    }, [categories, mainCategory]);
 
-    useEffect(()=>{
+    useEffect(() => {
         setSelectedSubCategory(
             subCategories?.filter(item => item?.category === type)
-        )
-    },[subCategories, type])
+        );
+    }, [subCategories, type]);
 
     const handleImageChange = (event) => {
         const files = Array.from(event.target.files);
@@ -55,7 +83,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            return response.data.url; // Adjust according to your server response
+            return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`; // Adjust according to your server response
         } catch (error) {
             throw new Error('File upload failed');
         }
@@ -74,17 +102,34 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                 uploadedImageURLs.push(imageURL);
             }
 
+            const uploadedVariantImages = await Promise.all(
+                variants.map((variant) =>
+                    variant.image ? uploadImage(variant.image) : null
+                )
+            );
+
+            const variantsData = variants.reduce((acc, variant, index) => {
+                if (variant.name && uploadedVariantImages[index]) {
+                    acc[variant.name] = {
+                        image: uploadedVariantImages[index],
+                        quantity: variant.quantity
+                    };
+                }
+                return acc;
+            }, {});
+
             // Create new product with uploaded file URLs
             const newProduct = {
                 name,
-                price:parseInt(price),
-                quantity:parseInt(quantity),
+                price: parseInt(price),
+                quantity: parseInt(quantity),
                 mainCategory,
                 category: type,
                 subCategory,
                 description,
                 details,
-                cost:parseInt(cost),
+                cost: parseInt(cost),
+                variants: variantsData,
                 images: uploadedImageURLs,
                 discount: parseFloat(discount),
                 number: parseInt(presentProduct) + 1,
@@ -99,11 +144,12 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                 setCost(0);
                 setMainCategory('');
                 setType('');
-                setSubCategory("");
+                setSubCategory('');
                 setDescription('');
                 setDetails('');
                 setImages([]);
                 setDiscount(0);
+                setVariants([{ name: '', image: null, quantity: 0 }]);
                 setAdd(false);
                 setReload(true);
             } else {
@@ -114,6 +160,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
             setLoading(false);
         }
     };
+
     return (
         <div className="py-5">
             <Helmet>
@@ -146,7 +193,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                             required
                             placeholder='Enter The Product Category'
                         >
-                            <option value="">Select Main Category</option>{" "}
+                            <option value="">Select Main Category</option>
                             {
                                 mainCategories?.map((category, idx) =>
                                     <option key={idx} value={category?.name}>{category?.name}</option>
@@ -166,7 +213,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                             required
                             placeholder='Enter The Product Category'
                         >
-                            <option value="">Select Category</option>{" "}
+                            <option value="">Select Category</option>
                             {
                                 selectedCategory?.map((category, idx) =>
                                     <option key={idx} value={category?.name}>{category?.name}</option>
@@ -183,7 +230,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                             onChange={(e) => setSubCategory(e.target.value)}
                             placeholder='Enter The Product Category'
                         >
-                            <option value="">Select Sub Category</option>{" "}
+                            <option value="">Select Sub Category</option>
                             {
                                 selectedSubCategory?.map((category, idx) =>
                                     <option key={idx} value={category?.name}>{category?.name}</option>
@@ -244,18 +291,75 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                         />
                     </div>
                 </div>
-                    <div className="">
-                        <label className="text-lg font-medium">Description:</label><br />
-                        <textarea
-                            className="p-2 rounded bg-gray-200 w-full"
-                            name="description"
-                            rows={3}
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            required
-                            placeholder='Enter The Product Description'
-                        />
-                    </div>
+                <div className="">
+                    <label className="text-lg font-medium">Description:</label><br />
+                    <textarea
+                        className="p-2 rounded bg-gray-200 w-full"
+                        name="description"
+                        rows={3}
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        required
+                        placeholder='Enter The Product Description'
+                    />
+                </div>
+
+                <div className="py-5">
+                    {/* Add Variant Button */}
+                    <button
+                        type="button"
+                        className="mb-4 px-4 py-2 bg-green-500 text-white rounded"
+                        onClick={handleAddVariantInput}
+                    >
+                        {variants.length === 0 ? 'Add Product Variant' : 'Add Another Product Variant'}
+                    </button>
+
+                    {/* Render Variant Inputs Only If Present */}
+                    {variants.map((variant, index) => (
+                        <div key={index} className="flex flex-col lg:flex-row items-center mb-4">
+                            <div className="lg:w-1/3 pr-2">
+                                <label className="text-lg font-medium">Variant Name:</label>
+                                <input
+                                    className="p-2 rounded bg-gray-200 w-full"
+                                    type="text"
+                                    value={variant.name}
+                                    onChange={(e) => handleVariantNameChange(index, e.target.value)}
+                                    placeholder="Enter Variant Name"
+                                />
+                            </div>
+                            <div className="lg:w-1/3 px-2">
+                                <label className="text-lg font-medium">Variant Quantity:</label>
+                                <input
+                                    className="p-2 rounded bg-gray-200 w-full"
+                                    type="number"
+                                    value={variant.quantity}
+                                    onChange={(e) => handleVariantQuantityChange(index, e.target.value)}
+                                    placeholder="Enter Variant Quantity"
+                                />
+                            </div>
+                            <div className="lg:w-1/3 pl-2 flex items-center">
+                                <div>
+                                    <label className="text-lg font-medium">Variant Image:</label>
+                                    <div className="flex flex-col lg:flex-row items-center">
+                                        <input
+                                            className="p-2 rounded bg-gray-200 w-full"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => handleVariantImageChange(index, e.target.files[0])}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="ml-4 px-4 py-2 bg-red-500 text-white rounded"
+                                            onClick={() => handleRemoveVariantInput(index)}
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
 
                 <div>
                     <label className="text-lg font-medium">Product Images: ({images.length})</label><br />
