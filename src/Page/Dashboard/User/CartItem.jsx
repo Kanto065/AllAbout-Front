@@ -121,7 +121,7 @@ export default function CartItem({ product, reload, message }) {
       </div>
     );
   }
-
+   
   return (
     <div className="border-b transition duration-300 flex space-x-5 pb-2">
       <div className="flex items-center justify-center w-1/5 md:w-1/5">
