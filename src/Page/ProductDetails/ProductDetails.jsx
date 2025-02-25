@@ -54,7 +54,6 @@ const ProductPage = () => {
     }
   }, [axiosPublic, productName, productData?._id]);
 
-
   useEffect(() => {
     if (productData && productData.variants) {
       const variantKeys = Object.keys(productData.variants);
@@ -76,7 +75,6 @@ const ProductPage = () => {
     } else {
       // If no variants, initialize with product quantity
       setOrderedQuantities((prev) => ({ ...prev, base: 1 })); // Set initial quantity to 1
-
     }
   }, [productData, selectedColor]);
 
@@ -107,9 +105,7 @@ const ProductPage = () => {
   const handlePrevImage = () => {
     setSelectedImageIndex(
       (prevIndex) =>
-
         (prevIndex - 1 + (productData?.images?.length || 1)) % (productData?.images?.length || 1)
-
     );
   };
 
@@ -137,9 +133,7 @@ const ProductPage = () => {
     const cart = {
       email: databaseUser?.email,
       productId: productData?._id,
-
       quantity: productData.variants ? orderedQuantities[selectedColor] : 1,
-
       code: "CODE" + (selectedImageIndex + 1),
     };
 
@@ -291,7 +285,6 @@ const ProductPage = () => {
     );
   }
 
-
   const settings = {
     dots: true,
     infinite: true,
@@ -299,6 +292,7 @@ const ProductPage = () => {
     slidesToShow: 1,
     slidesToScroll: 1,
     arrows: false,
+    beforeChange: (current, next) => setSelectedImageIndex(next),
   };
 
   const selectedVariant = productData.variants ? productData.variants[selectedColor] : null;
@@ -364,6 +358,13 @@ const ProductPage = () => {
                       className="w-full h-[400px] object-contain"
                     />
                   )
+                )}
+                {selectedVariantImage && !isVideo(selectedVariantImage) && (
+                  <img
+                    src={selectedVariantImage}
+                    alt="Selected Variant"
+                    className="w-full h-[400px] object-contain"
+                  />
                 )}
               </Slider>
             </div>
@@ -626,4 +627,3 @@ const ProductPage = () => {
 };
 
 export default ProductPage;
-
