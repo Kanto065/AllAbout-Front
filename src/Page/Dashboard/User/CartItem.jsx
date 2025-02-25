@@ -95,12 +95,16 @@ export default function CartItem({ product, reload, message }) {
     });
   };
 
+  // Determine the image and variant name to display
+  const variantImage = product?.variant ? product?.variant?.image : product?.images[0];
+  const variantName = product?.variant ? `Variant: ${product?.variant?.name}` : "No Variant";
+
   if (message) {
     // If the product is out of stock, display the message.
     return (
       <div className="border-b transition duration-300 flex space-x-5 pb-2 bg-red-50 border-red-500 p-4 rounded-md">
         <img
-          src={product?.images[0]}
+          src={variantImage}
           alt={product?.name}
           className="h-32 w-full md:w-1/5 object-contain bg-gray-300 opacity-50"
         />
@@ -122,13 +126,11 @@ export default function CartItem({ product, reload, message }) {
     );
   }
 
-  //comment
-   
   return (
     <div className="border-b transition duration-300 flex space-x-5 pb-2">
       <div className="flex items-center justify-center w-1/5 md:w-1/5">
         <img
-          src={product?.images[0]}
+          src={variantImage}
           alt={product?.name}
           className="h-32 w-full object-contain bg-white-300"
         />
@@ -148,7 +150,7 @@ export default function CartItem({ product, reload, message }) {
           ৳
         </p>
 
-        <p className="text-gray-600">Product Variant {product?.variant}</p>
+        <p className="text-gray-600">{variantName}</p>
         <div className="w-full flex justify-between">
           <div className="flex justify-start items-center space-x-5">
             <button
