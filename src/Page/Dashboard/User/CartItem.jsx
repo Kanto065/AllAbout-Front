@@ -121,6 +121,8 @@ export default function CartItem({ product, reload, message }) {
       </div>
     );
   }
+
+  //comment
    
   return (
     <div className="border-b transition duration-300 flex space-x-5 pb-2">
