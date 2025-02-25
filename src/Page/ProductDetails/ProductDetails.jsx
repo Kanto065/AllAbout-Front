@@ -129,48 +129,55 @@ const ProductPage = () => {
       navigate("/login", { state: { from: location } });
       return;
     }
-
-    const cart = {
-      email: databaseUser?.email,
-      productId: productData?._id,
-      quantity: productData.variants ? orderedQuantities[selectedColor] : 1,
-      code: "CODE" + (selectedImageIndex + 1),
-    };
-
+  
+    const cartItems = [];
+    const hasVariants = productData?.variants && Object.keys(productData.variants).length > 0;
+  
+    // Iterate over the ordered quantities for each variant
+    for (const [variant, quantity] of Object.entries(orderedQuantities)) {
+      if (quantity > 0 && (hasVariants ? variant !== 'base' : true)) {
+        const variantDetails = hasVariants ? { name: variant, image: productData.variants[variant].image } : null;
+  
+        cartItems.push({
+          email: databaseUser?.email,
+          productId: productData?._id,
+          variant: variantDetails,
+          quantity,
+        });
+      }
+    }
+  
     try {
-      const response = await axiosPublic.post(`/cart`, cart);
-      if (response?.data?.insertedId) {
+      const responses = await Promise.all(
+        cartItems.map((item) => axiosPublic.post(`/cart`, item))
+      );
+  
+      const successfulAdditions = responses.filter(
+        (response) => response?.data?.insertedId || response?.data?.status
+      );
+  
+      if (successfulAdditions.length > 0) {
         Swal.fire({
           icon: "success",
-          title: "Product added to cart successfully",
+          title: "Products added to cart successfully",
         });
         refetch();
-      } else if (response?.data?.status) {
-        Swal.fire({
-          title: "Another Product added to cart successfully!",
-          icon: "success",
-          showCancelButton: true,
-          confirmButtonColor: "#3085d6",
-          cancelButtonColor: "#d33",
-          confirmButtonText: "Go Cart!",
-        }).then((result) => {
-          if (result.isConfirmed) {
-            navigate(`/dashboard/cart`);
-          }
-        });
       } else {
         Swal.fire({
           icon: "error",
-          title: "Failed to add product to cart",
+          title: "Failed to add products to cart",
         });
       }
     } catch (err) {
       Swal.fire({
         icon: "error",
-        title: "Error adding product to cart",
+        title: "Error adding products to cart",
       });
     }
   };
+  
+  
+  
 
   const handleImageChange = (event) => {
     const files = Array.from(event.target.files);
