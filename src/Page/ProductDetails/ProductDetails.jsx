@@ -16,7 +16,7 @@ import Swal from "sweetalert2";
 import Wish from "../../Components/Icons/Wish";
 import SingleOrder from "../../Components/PopUp/SingleOrder";
 import { FaStar } from "react-icons/fa";
-import Slider from "react-slick"; // Import react-slick
+import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
@@ -27,6 +27,7 @@ const ProductPage = () => {
   const [productData, setProductData] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [orderedQuantities, setOrderedQuantities] = useState({});
+  const [selectedItemsForCart, setSelectedItemsForCart] = useState({});
   const [details, setDetails] = useState(null);
   const [selectedColor, setSelectedColor] = useState("");
   const [rating, setRating] = useState(0);
@@ -59,12 +60,13 @@ const ProductPage = () => {
       const variantKeys = Object.keys(productData.variants);
       if (variantKeys.length > 0) {
         // Initialize orderedQuantities for each variant
-        const initialQuantities = variantKeys.reduce((acc, color) => {
-          acc[color] = acc[color] || 0; // Initialize to 0 or keep existing value
+        const initialQuantities = variantKeys.reduce((acc, color, index) => {
+          acc[color] = index === 0 ? 1 : 0; // Set the first variant's quantity to 1, others to 0
           return acc;
-        }, { ...orderedQuantities });
+        }, {});
 
         setOrderedQuantities(initialQuantities);
+        setSelectedItemsForCart(initialQuantities);
 
         // Set the default selected color and image if not already set
         if (!variantKeys.includes(selectedColor)) {
@@ -75,8 +77,9 @@ const ProductPage = () => {
     } else {
       // If no variants, initialize with product quantity
       setOrderedQuantities((prev) => ({ ...prev, base: 1 })); // Set initial quantity to 1
+      setSelectedItemsForCart((prev) => ({ ...prev, base: 1 }));
     }
-  }, [productData, selectedColor]);
+  }, [productData]);
 
   const calculateAverageRating = (reviews) => {
     if (reviews.length === 0) {
@@ -129,15 +132,15 @@ const ProductPage = () => {
       navigate("/login", { state: { from: location } });
       return;
     }
-  
+
     const cartItems = [];
     const hasVariants = productData?.variants && Object.keys(productData.variants).length > 0;
-  
-    // Iterate over the ordered quantities for each variant
-    for (const [variant, quantity] of Object.entries(orderedQuantities)) {
+
+    // Iterate over the selected items for the cart
+    for (const [variant, quantity] of Object.entries(selectedItemsForCart)) {
       if (quantity > 0 && (hasVariants ? variant !== 'base' : true)) {
         const variantDetails = hasVariants ? { name: variant, image: productData.variants[variant].image } : null;
-  
+
         cartItems.push({
           email: databaseUser?.email,
           productId: productData?._id,
@@ -146,16 +149,16 @@ const ProductPage = () => {
         });
       }
     }
-  
+
     try {
       const responses = await Promise.all(
         cartItems.map((item) => axiosPublic.post(`/cart`, item))
       );
-  
+
       const successfulAdditions = responses.filter(
         (response) => response?.data?.insertedId || response?.data?.status
       );
-  
+
       if (successfulAdditions.length > 0) {
         Swal.fire({
           icon: "success",
@@ -175,9 +178,6 @@ const ProductPage = () => {
       });
     }
   };
-  
-  
-  
 
   const handleImageChange = (event) => {
     const files = Array.from(event.target.files);
@@ -278,6 +278,12 @@ const ProductPage = () => {
 
   const handleQuantityChange = (variant, amount) => {
     setOrderedQuantities((prev) => {
+      const newQuantity = (prev[variant] || 0) + amount;
+      if (newQuantity < 0) return prev;
+      return { ...prev, [variant]: newQuantity };
+    });
+
+    setSelectedItemsForCart((prev) => {
       const newQuantity = (prev[variant] || 0) + amount;
       if (newQuantity < 0) return prev;
       return { ...prev, [variant]: newQuantity };
@@ -513,6 +519,20 @@ const ProductPage = () => {
             </div>
           )}
 
+          {/* Selected Items for Cart */}
+          <div className="mt-8">
+            <h2 className="text-lg font-medium mb-4">Selected Items for Cart</h2>
+            {Object.entries(selectedItemsForCart).map(
+              ([variant, quantity], index) =>
+                quantity > 0 && (
+                  <div key={index} className="flex items-center justify-between border-b pb-2 mb-2">
+                    <span className="text-lg">{variant}</span>
+                    <span className="text-lg">Quantity: {quantity}</span>
+                  </div>
+                )
+            )}
+          </div>
+
           <div className="mt-6 text-2xl flex items-center space-x-5">
             <Wish id={productData?._id} />
             <IoShareSocialOutline
@@ -566,26 +586,6 @@ const ProductPage = () => {
                     alt="Review"
                     className="mt-2 w-32 h-32 object-cover"
                   />
-                )}
-                {/* Display selected product variant images */}
-                {productData?.variants && (
-                  <div className="mt-2">
-                    <h4 className="text-lg font-medium mb-2">
-                      Selected Product Variants
-                    </h4>
-                    <div className="flex space-x-2">
-                      {Object.entries(productData.variants).map(
-                        ([color, { image }], index) => (
-                          <img
-                            key={index}
-                            src={image}
-                            alt={color}
-                            className="w-12 h-12 rounded-lg cursor-pointer border-2 border-gray-200"
-                          />
-                        )
-                      )}
-                    </div>
-                  </div>
                 )}
               </div>
             ))

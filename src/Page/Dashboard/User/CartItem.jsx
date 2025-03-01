@@ -8,7 +8,7 @@ import { FaStar } from "react-icons/fa";
 export default function CartItem({ product, reload, message }) {
   const [databaseUser] = useDatabaseUser();
   const axiosPublic = useAxiosPublic();
-  const [addQuantity, setAddQuantity] = useState(product?.orderedQuantity);
+  const [quantities, setQuantities] = useState({});
   const [databaseProduct, setDatabaseProduct] = useState({});
   const [reviews, setReviews] = useState([]);
   const [averageRating, setAverageRating] = useState(0);
@@ -16,13 +16,25 @@ export default function CartItem({ product, reload, message }) {
   useEffect(() => {
     axiosPublic
       .get(`/products/${product?.name}`)
-      .then((data) => setDatabaseProduct(data?.data));
+      .then((data) => setDatabaseProduct(data?.data))
+      .catch((error) => console.error("Error fetching product data:", error));
 
-    axiosPublic.get(`/reviews/${product?.name}`).then((data) => {
-      setReviews(data?.data || []);
-      calculateAverageRating(data?.data || []);
-    });
+    axiosPublic
+      .get(`/reviews/${product?.name}`)
+      .then((data) => {
+        setReviews(data?.data || []);
+        calculateAverageRating(data?.data || []);
+      })
+      .catch((error) => console.error("Error fetching reviews:", error));
   }, [product, axiosPublic]);
+
+  useEffect(() => {
+    setQuantities((prev) => ({
+      ...prev,
+      [`${product._id}-${product.variant?.name}`]: product.orderedQuantity,
+    }));
+  }, [product]);
+  
 
   const calculateAverageRating = (reviews) => {
     if (reviews.length === 0) {
@@ -35,11 +47,28 @@ export default function CartItem({ product, reload, message }) {
   };
 
   const handleCart = async (x) => {
+    const productId = product._id;
+    const variantName = product.variant?.name;
+    const key = `${productId}-${variantName}`;
+    const newQuantity = quantities[key] + x;
+    if (newQuantity < 1 || newQuantity > product?.quantity) {
+      Swal.fire({
+        icon: "error",
+        title: `Invalid quantity. Available quantity: ${product?.quantity}`,
+      });
+      return;
+    }
+  
     const cart = {
       email: databaseUser?.email,
-      productId: product?._id,
-      quantity: addQuantity + x,
+      productId,
+      variant: product?.variant,
+      quantity: newQuantity,
     };
+
+    console.log(`Key for ${product.name} - ${product.variant?.name}:`, `${product._id}-${product.variant?.name}`);
+    console.log(product);
+
     try {
       const response = await axiosPublic.patch(`/cart`, cart);
       if (response?.data?.modifiedCount > 0) {
@@ -50,7 +79,10 @@ export default function CartItem({ product, reload, message }) {
           showConfirmButton: false,
           timer: 1500,
         });
-        setAddQuantity(addQuantity + x);
+        setQuantities((prev) => ({
+          ...prev,
+          [key]: newQuantity,
+        }));
         reload();
       } else {
         Swal.fire({
@@ -59,17 +91,19 @@ export default function CartItem({ product, reload, message }) {
         });
       }
     } catch (err) {
+      console.error("Error updating cart:", err);
       Swal.fire({
         icon: "error",
-        title: "Error adding product to cart",
+        title: "Error updating product in cart",
       });
     }
   };
+  
 
   const handleDeleteCartProduct = () => {
     Swal.fire({
       title: "Are you sure?",
-      text: `You want to delete "${product?.name}" from your Cart!`,
+      text: `You want to delete "${product?.name} - ${product?.variant?.name}" from your Cart!`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#3085d6",
@@ -78,18 +112,29 @@ export default function CartItem({ product, reload, message }) {
     }).then((result) => {
       if (result.isConfirmed) {
         axiosPublic
-          .delete(
-            `/cart?email=${databaseUser?.email}&productId=${product?._id}`
-          )
+          .delete(`/cart`, {
+            data: {
+              email: databaseUser?.email,
+              productId: product?._id,
+              variant: product?.variant?.name,
+            },
+          })
           .then((res) => {
             if (res.data.deletedCount > 0) {
               Swal.fire({
                 title: "Deleted!",
-                text: `${product?.name} has been deleted from your Cart.`,
+                text: `${product?.name} - ${product?.variant?.name} has been deleted from your Cart.`,
                 icon: "success",
               });
               reload();
             }
+          })
+          .catch((error) => {
+            console.error("Error deleting product from cart:", error);
+            Swal.fire({
+              icon: "error",
+              title: "Error deleting product from cart",
+            });
           });
       }
     });
@@ -98,6 +143,8 @@ export default function CartItem({ product, reload, message }) {
   // Determine the image and variant name to display
   const variantImage = product?.variant ? product?.variant?.image : product?.images[0];
   const variantName = product?.variant ? `Variant: ${product?.variant?.name}` : "No Variant";
+
+  const totalPrice = (product.price * quantities[`${product._id}-${product.variant?.name}`]) - ((product.price * product.discount / 100) * quantities[`${product._id}-${product.variant?.name}`]);
 
   if (message) {
     // If the product is out of stock, display the message.
@@ -114,9 +161,7 @@ export default function CartItem({ product, reload, message }) {
             <p className="text-red-500 font-medium">{message}</p>
           </div>
           <button
-            onClick={() =>
-              handleDeleteCartProduct(product?._id, product?.productName)
-            }
+            onClick={handleDeleteCartProduct}
             className="flex items-center justify-center rounded-md w-24 h-8 border border-red-600 text-red-500 hover:bg-red-500 hover:text-white duration-300"
           >
             <MdDelete className="text-sm" /> Delete
@@ -139,15 +184,9 @@ export default function CartItem({ product, reload, message }) {
         <h2 className="font-medium text-xl">{product?.name}</h2>
         <p className="text-lg font-medium">
           <del className="text-sm text-[#303049] mr-1">
-            {parseFloat(product?.price * product?.orderedQuantity)?.toFixed(2)}
+            {parseFloat(product?.price * quantities[`${product._id}-${product.variant?.name}`])?.toFixed(2)}
           </del>
-          {parseFloat(
-            product?.price * product?.orderedQuantity -
-              (product?.price / 100) *
-                product?.discount *
-                product?.orderedQuantity
-          )?.toFixed(2)}
-          ৳
+          {totalPrice.toFixed(2)} ৳
         </p>
 
         <p className="text-gray-600">{variantName}</p>
@@ -155,19 +194,19 @@ export default function CartItem({ product, reload, message }) {
           <div className="flex justify-start items-center space-x-5">
             <button
               onClick={() => handleCart(-1)}
-              disabled={addQuantity <= 1}
+              disabled={quantities[`${product._id}-${product.variant?.name}`] <= 1}
               className={`w-8 h-8 border-2 border-gray-300 rounded-full text-xl flex justify-center items-center focus:outline-none ${
-                addQuantity <= 1 && "opacity-50 cursor-not-allowed"
+                quantities[`${product._id}-${product.variant?.name}`] <= 1 && "opacity-50 cursor-not-allowed"
               }`}
             >
               -
             </button>
-            <p>{addQuantity}</p>
+            <p>{quantities[`${product._id}-${product.variant?.name}`]}</p>
             <button
               onClick={() => handleCart(1)}
-              disabled={addQuantity >= databaseProduct?.quantity}
+              disabled={quantities[`${product._id}-${product.variant?.name}`] >= product?.quantity}
               className={`w-8 h-8 border-2 border-gray-300 rounded-full text-xl flex justify-center items-center focus:outline-none ${
-                addQuantity >= product?.quantity &&
+                quantities[`${product._id}-${product.variant?.name}`] >= product?.quantity &&
                 "opacity-50 cursor-not-allowed"
               }`}
             >
@@ -176,9 +215,7 @@ export default function CartItem({ product, reload, message }) {
             </button>
           </div>
           <button
-            onClick={() =>
-              handleDeleteCartProduct(product?._id, product?.productName)
-            }
+            onClick={handleDeleteCartProduct}
             className="flex items-center rounded-md p-1 border border-red-600 text-red-500 hover:bg-red-500 hover:text-white duration-300"
           >
             <MdDelete className="mr-2"></MdDelete> Delete
