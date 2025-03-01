@@ -300,7 +300,7 @@ const ProductPage = () => {
 
   const settings = {
     dots: true,
-    infinite: true,
+    infinite: false, // Set to false to prevent duplication
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
@@ -384,6 +384,43 @@ const ProductPage = () => {
           </div>
 
           <div className="hidden lg:flex justify-center items-center space-x-2 overflow-x-auto">
+            {productData?.images?.map((media, idx) =>
+              isVideo(media) ? (
+                <video
+                  key={idx}
+                  src={media}
+                  className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
+                    selectedImageIndex === idx && !selectedVariantImage
+                      ? "border-blue-600"
+                      : "border-gray-300"
+                  }`}
+                  onClick={() => {
+                    setSelectedImageIndex(idx);
+                    setSelectedVariantImage(null);
+                  }}
+                  muted
+                />
+              ) : (
+                <img
+                  key={idx}
+                  src={media}
+                  alt={`Thumbnail ${idx}`}
+                  className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
+                    selectedImageIndex === idx && !selectedVariantImage
+                      ? "border-blue-600"
+                      : "border-gray-300"
+                  }`}
+                  onClick={() => {
+                    setSelectedImageIndex(idx);
+                    setSelectedVariantImage(null);
+                  }}
+                />
+              )
+            )}
+          </div>
+
+          {/* Mobile View - Small Preview Images */}
+          <div className="lg:hidden flex justify-center items-center space-x-2 overflow-x-auto mt-4">
             {productData?.images?.map((media, idx) =>
               isVideo(media) ? (
                 <video
