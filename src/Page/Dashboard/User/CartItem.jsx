@@ -34,7 +34,6 @@ export default function CartItem({ product, reload, message }) {
       [`${product._id}-${product.variant?.name}`]: product.orderedQuantity,
     }));
   }, [product]);
-  
 
   const calculateAverageRating = (reviews) => {
     if (reviews.length === 0) {
@@ -58,16 +57,13 @@ export default function CartItem({ product, reload, message }) {
       });
       return;
     }
-  
+
     const cart = {
       email: databaseUser?.email,
       productId,
       variant: product?.variant,
       quantity: newQuantity,
     };
-
-    console.log(`Key for ${product.name} - ${product.variant?.name}:`, `${product._id}-${product.variant?.name}`);
-    console.log(product);
 
     try {
       const response = await axiosPublic.patch(`/cart`, cart);
@@ -98,7 +94,6 @@ export default function CartItem({ product, reload, message }) {
       });
     }
   };
-  
 
   const handleDeleteCartProduct = () => {
     Swal.fire({
@@ -113,7 +108,7 @@ export default function CartItem({ product, reload, message }) {
       if (result.isConfirmed) {
         axiosPublic
           .delete(`/cart`, {
-            data: {
+            params: {
               email: databaseUser?.email,
               productId: product?._id,
               variant: product?.variant?.name,
@@ -126,7 +121,7 @@ export default function CartItem({ product, reload, message }) {
                 text: `${product?.name} - ${product?.variant?.name} has been deleted from your Cart.`,
                 icon: "success",
               });
-              reload();
+              reload(); // Ensure this triggers a state update in the parent component
             }
           })
           .catch((error) => {

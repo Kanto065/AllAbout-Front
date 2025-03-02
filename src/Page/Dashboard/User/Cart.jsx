@@ -27,7 +27,7 @@ export default function Cart() {
         parseInt(currentValue?.price * currentValue?.orderedQuantity),
       0
     );
-    console.log("cart" , {cart});
+    console.log("cart", { cart });
     const totalDiscountPricee = cart?.reduce(
       (accumulator, currentValue) =>
         accumulator +
@@ -53,23 +53,29 @@ export default function Cart() {
       phone: form?.phone?.value || databaseUser?.phone,
       address: form?.address?.value || databaseUser?.location,
       deliveryFee,
+      variantName: cart.map(item => item.variant?.name || 'no-variant') // Add variant names
     };
 
-    await axiosPublic
-      .post(`/cashOnDelivery/${user?.email || databaseUser?.email}`, order)
-      .then((res) => {
-        if (res?.data?.orderResult?.insertedId) {
-          Swal.fire({
-            icon: "success",
-            title: `${res?.data?.message}`,
-            text: "Our agent will contact you very soon!",
-          });
-          reload();
-          navigate("/dashboard/purchase");
-          refetch();
-          setOpenModal(false);
-        }
+    try {
+      const res = await axiosPublic.post(`/cashOnDelivery/${user?.email || databaseUser?.email}`, order);
+      if (res?.data?.orderResult?.insertedId) {
+        Swal.fire({
+          icon: "success",
+          title: `${res?.data?.message}`,
+          text: "Our agent will contact you very soon!",
+        });
+        reload();
+        navigate("/dashboard/purchase");
+        refetch();
+        setOpenModal(false);
+      }
+    } catch (error) {
+      console.error("Error during checkout:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error during checkout",
       });
+    }
   };
 
   return (
