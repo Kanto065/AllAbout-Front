@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Link,
   Navigate,
@@ -36,48 +36,54 @@ const ProductPage = () => {
   const [reviews, setReviews] = useState([]);
   const [reviewImage, setReviewImage] = useState(null);
   const [averageRating, setAverageRating] = useState(0);
-  const [selectedVariantImage, setSelectedVariantImage] = useState(null);
+  const [combinedImages, setCombinedImages] = useState([]);
   const { name: productName } = useParams();
   const location = useLocation()?.pathname;
   const navigate = useNavigate();
+  const sliderRef = useRef(null);
 
   useEffect(() => {
     axiosPublic.get(`/products/${productName}`).then((data) => {
       setProductData(data?.data);
     });
+  }, [axiosPublic, productName]);
 
-    if (productData?._id) {
-      axiosPublic.get(`/reviews/${productData?._id}`).then((data) => {
+  useEffect(() => {
+    if (productData) {
+      axiosPublic.get(`/reviews/${productData._id}`).then((data) => {
         const reviewsData = data?.data || [];
         setReviews(reviewsData);
         calculateAverageRating(reviewsData);
       });
-    }
-  }, [axiosPublic, productName, productData?._id]);
 
-  useEffect(() => {
-    if (productData && productData.variants) {
-      const variantKeys = Object.keys(productData.variants);
-      if (variantKeys.length > 0) {
-        // Initialize orderedQuantities for each variant
-        const initialQuantities = variantKeys.reduce((acc, color, index) => {
-          acc[color] = index === 0 ? 1 : 0; // Set the first variant's quantity to 1, others to 0
-          return acc;
-        }, {});
+      if (productData.variants) {
+        const variantKeys = Object.keys(productData.variants);
+        if (variantKeys.length > 0) {
+          // Initialize orderedQuantities for each variant
+          const initialQuantities = variantKeys.reduce((acc, color) => {
+            acc[color] = 0; // Set the first variant's quantity to 0, others to 0
+            return acc;
+          }, {});
 
-        setOrderedQuantities(initialQuantities);
-        setSelectedItemsForCart(initialQuantities);
+          setOrderedQuantities(initialQuantities);
+          setSelectedItemsForCart(initialQuantities);
 
-        // Set the default selected color and image if not already set
-        if (!variantKeys.includes(selectedColor)) {
-          setSelectedColor(variantKeys[0]);
-          setSelectedVariantImage(productData.variants[variantKeys[0]].image);
+          // Set the default selected color and image if not already set
+          if (!variantKeys.includes(selectedColor)) {
+            setSelectedColor(variantKeys[0]);
+          }
+
+          // Combine main images and variant images
+          const mainImages = productData.images || [];
+          const variantImages = variantKeys.map(color => productData.variants[color].image);
+          setCombinedImages([...mainImages, ...variantImages]);
         }
+      } else {
+        // If no variants, initialize with product quantity
+        setOrderedQuantities((prev) => ({ ...prev, base: 0 })); // Set initial quantity to 0
+        setSelectedItemsForCart((prev) => ({ ...prev, base: 0 }));
+        setCombinedImages(productData.images || []);
       }
-    } else {
-      // If no variants, initialize with product quantity
-      setOrderedQuantities((prev) => ({ ...prev, base: 1 })); // Set initial quantity to 1
-      setSelectedItemsForCart((prev) => ({ ...prev, base: 1 }));
     }
   }, [productData]);
 
@@ -100,16 +106,11 @@ const ProductPage = () => {
   }, [productData]);
 
   const handleNextImage = () => {
-    setSelectedImageIndex(
-      (prevIndex) => (prevIndex + 1) % (productData?.images?.length || 1)
-    );
+    sliderRef.current.slickNext();
   };
 
   const handlePrevImage = () => {
-    setSelectedImageIndex(
-      (prevIndex) =>
-        (prevIndex - 1 + (productData?.images?.length || 1)) % (productData?.images?.length || 1)
-    );
+    sliderRef.current.slickPrev();
   };
 
   const handleShare = () => {
@@ -319,9 +320,9 @@ const ProductPage = () => {
         <div className="flex-1 w-full mx-auto">
           <div className="relative rounded-lg overflow-hidden bg-white mb-4 lg:w-10/12 mx-auto">
             <div className="hidden lg:block">
-              {isVideo(selectedVariantImage || productData?.images[selectedImageIndex]) ? (
+              {isVideo(combinedImages[selectedImageIndex]) ? (
                 <video
-                  src={selectedVariantImage || productData?.images[selectedImageIndex]}
+                  src={combinedImages[selectedImageIndex]}
                   autoPlay
                   loop
                   muted
@@ -332,7 +333,7 @@ const ProductPage = () => {
                 </video>
               ) : (
                 <img
-                  src={selectedVariantImage || productData?.images[selectedImageIndex]}
+                  src={combinedImages[selectedImageIndex]}
                   alt="Selected Product"
                   className="w-full min-h-[400px] h-full object-contain"
                 />
@@ -351,8 +352,8 @@ const ProductPage = () => {
               </button>
             </div>
             <div className="lg:hidden">
-              <Slider {...settings}>
-                {productData?.images?.map((media, idx) =>
+              <Slider {...settings} ref={sliderRef}>
+                {combinedImages.map((media, idx) =>
                   isVideo(media) ? (
                     <video
                       key={idx}
@@ -372,31 +373,22 @@ const ProductPage = () => {
                     />
                   )
                 )}
-                {selectedVariantImage && !isVideo(selectedVariantImage) && (
-                  <img
-                    src={selectedVariantImage}
-                    alt="Selected Variant"
-                    className="w-full h-[400px] object-contain"
-                  />
-                )}
               </Slider>
             </div>
           </div>
 
           <div className="hidden lg:flex justify-center items-center space-x-2 overflow-x-auto">
-            {productData?.images?.map((media, idx) =>
+            {combinedImages.map((media, idx) =>
               isVideo(media) ? (
                 <video
                   key={idx}
                   src={media}
                   className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx && !selectedVariantImage
-                      ? "border-blue-600"
-                      : "border-gray-300"
+                    selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
                   }`}
                   onClick={() => {
                     setSelectedImageIndex(idx);
-                    setSelectedVariantImage(null);
+                    sliderRef.current.slickGoTo(idx);
                   }}
                   muted
                 />
@@ -406,13 +398,11 @@ const ProductPage = () => {
                   src={media}
                   alt={`Thumbnail ${idx}`}
                   className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx && !selectedVariantImage
-                      ? "border-blue-600"
-                      : "border-gray-300"
+                    selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
                   }`}
                   onClick={() => {
                     setSelectedImageIndex(idx);
-                    setSelectedVariantImage(null);
+                    sliderRef.current.slickGoTo(idx);
                   }}
                 />
               )
@@ -421,19 +411,17 @@ const ProductPage = () => {
 
           {/* Mobile View - Small Preview Images */}
           <div className="lg:hidden flex justify-center items-center space-x-2 overflow-x-auto mt-4">
-            {productData?.images?.map((media, idx) =>
+            {combinedImages.map((media, idx) =>
               isVideo(media) ? (
                 <video
                   key={idx}
                   src={media}
                   className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx && !selectedVariantImage
-                      ? "border-blue-600"
-                      : "border-gray-300"
+                    selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
                   }`}
                   onClick={() => {
                     setSelectedImageIndex(idx);
-                    setSelectedVariantImage(null);
+                    sliderRef.current.slickGoTo(idx);
                   }}
                   muted
                 />
@@ -443,13 +431,11 @@ const ProductPage = () => {
                   src={media}
                   alt={`Thumbnail ${idx}`}
                   className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx && !selectedVariantImage
-                      ? "border-blue-600"
-                      : "border-gray-300"
+                    selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
                   }`}
                   onClick={() => {
                     setSelectedImageIndex(idx);
-                    setSelectedVariantImage(null);
+                    sliderRef.current.slickGoTo(idx);
                   }}
                 />
               )
@@ -503,7 +489,8 @@ const ProductPage = () => {
                       }`}
                       onClick={() => {
                         setSelectedColor(color);
-                        setSelectedVariantImage(image);
+                        setSelectedImageIndex(productData.images.length + index);
+                        sliderRef.current.slickGoTo(productData.images.length + index);
                       }}
                     />
                   )
