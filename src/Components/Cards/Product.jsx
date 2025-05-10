@@ -1,11 +1,23 @@
 import { useState } from "react";
 import Wish from "../Icons/Wish";
 import Cart from "../Icons/Cart";
-import { Link } from "react-router-dom";
+import { IoMdAdd } from "react-icons/io";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Product({ product }) {
   const [selectedImage, setSelectedImage] = useState(0); // Tracks the currently displayed image
   const [selectedColor, setSelectedColor] = useState(0); // Tracks the selected color
+  const navigate = useNavigate();
+
+  const handleCartClick = () => {
+    if (product?.variants && Object.keys(product.variants).length > 0) {
+      // Navigate to the product details page if variants are available
+      navigate(`/products/${product?.name}`);
+    } else {
+      // Add to cart logic here
+      console.log("Product added to cart:", product);
+    }
+  };
 
   return (
     <div className="bg-white relative overflow-hidden shadow-lg p-0.5 border">
@@ -86,7 +98,17 @@ export default function Product({ product }) {
         ) : (
           <div className="flex justify-between mt-2 px-1 pb-1">
             <Wish id={product?._id} />
-            <Cart id={product?._id} />
+            {product?.variants && Object.keys(product.variants).length > 0 ? (
+              <button onClick={handleCartClick}>
+                <div className="bg-[#1E93D1] text-white rounded-full p-1 text-xl md:text-3xl">
+                  <IoMdAdd />
+                </div>
+              </button>
+            ) : (
+              <button onClick={handleCartClick}>
+                <Cart id={product?._id} />
+              </button>
+            )}
           </div>
         )}
       </div>

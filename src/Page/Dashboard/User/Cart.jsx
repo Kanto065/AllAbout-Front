@@ -27,11 +27,12 @@ export default function Cart() {
         parseInt(currentValue?.price * currentValue?.orderedQuantity),
       0
     );
+    console.log("cart", { cart });
     const totalDiscountPricee = cart?.reduce(
       (accumulator, currentValue) =>
         accumulator +
         parseInt(
-          (currentValue?.price - 
+          (currentValue?.price -
             (currentValue?.price / 100) * (100 - currentValue?.discount)) *
             currentValue?.orderedQuantity
         ),
@@ -52,23 +53,29 @@ export default function Cart() {
       phone: form?.phone?.value || databaseUser?.phone,
       address: form?.address?.value || databaseUser?.location,
       deliveryFee,
+      variantName: cart.map(item => item.variant?.name || 'no-variant') // Add variant names
     };
 
-    await axiosPublic
-      .post(`/cashOnDelivery/${user?.email || databaseUser?.email}`, order)
-      .then((res) => {
-        if (res?.data?.orderResult?.insertedId) {
-          Swal.fire({
-            icon: "success",
-            title: `${res?.data?.message}`,
-            text: "Our agent will contact you very soon!",
-          });
-          reload();
-          navigate("/dashboard/purchase");
-          refetch();
-          setOpenModal(false);
-        }
+    try {
+      const res = await axiosPublic.post(`/cashOnDelivery/${user?.email || databaseUser?.email}`, order);
+      if (res?.data?.orderResult?.insertedId) {
+        Swal.fire({
+          icon: "success",
+          title: `${res?.data?.message}`,
+          text: "Our agent will contact you very soon!",
+        });
+        reload();
+        navigate("/dashboard/purchase");
+        refetch();
+        setOpenModal(false);
+      }
+    } catch (error) {
+      console.error("Error during checkout:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error during checkout",
       });
+    }
   };
 
   return (
@@ -78,16 +85,7 @@ export default function Cart() {
           <div className="w-full bg-white space-y-7 p-8">
             <h1 className="text-2xl font-bold">Your Cart</h1>
             {cart?.map((product, idx) => (
-              product.quantity > 0 ? (
-                <CartItem key={idx} product={product} reload={refetch} />
-              ) : (
-                <CartItem
-                  key={idx}
-                  product={product}
-                  reload={refetch}
-                  message={product.quantity > 0 ? null : `${product.name} is currently out of stock.`}
-                />
-              )
+              <CartItem key={`${product._id}-${product.variant?.name || 'no-variant'}`} product={product} reload={refetch} />
             ))}
             {cart?.length === 0 && (
               <div className="flex items-center justify-center">
@@ -155,9 +153,9 @@ export default function Cart() {
           <div className="flex justify-center mt-7">
             <button
               onClick={() => setOpenModal(totalPrice > 0 && true)}
-              disabled={cart.some((product) => product.quantity === 0) || totalPrice <= 0}
+              disabled={cart.some((product) => product.orderedQuantity === 0) || totalPrice <= 0}
               className={`text-white bg-[#8286bb] py-3 px-12 text-lg font-medium rounded-lg scale-100 hover:scale-110 duration-300 ${
-                (cart.some((product) => product.quantity === 0) || totalPrice <= 0) &&
+                (cart.some((product) => product.orderedQuantity === 0) || totalPrice <= 0) &&
                 'cursor-not-allowed opacity-50'
               }`}
             >

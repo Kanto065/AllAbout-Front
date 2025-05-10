@@ -108,7 +108,7 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                 )
             );
 
-            const variantsData = variants.reduce((acc, variant, index) => {
+            var variantsData = variants.reduce((acc, variant, index) => {
                 if (variant.name && uploadedVariantImages[index]) {
                     acc[variant.name] = {
                         image: uploadedVariantImages[index],
@@ -117,6 +117,8 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                 }
                 return acc;
             }, {});
+
+            variantsData = Object.keys(variantsData).length === 0 ? null : variantsData;
 
             // Create new product with uploaded file URLs
             const newProduct = {

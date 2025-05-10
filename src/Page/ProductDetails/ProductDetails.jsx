@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Link,
   Navigate,
@@ -27,6 +27,7 @@ const ProductPage = () => {
   const [productData, setProductData] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [orderedQuantities, setOrderedQuantities] = useState({});
+  const [selectedItemsForCart, setSelectedItemsForCart] = useState({});
   const [details, setDetails] = useState(null);
   const [selectedColor, setSelectedColor] = useState("");
   const [rating, setRating] = useState(0);
@@ -35,24 +36,25 @@ const ProductPage = () => {
   const [reviews, setReviews] = useState([]);
   const [reviewImage, setReviewImage] = useState(null);
   const [averageRating, setAverageRating] = useState(0);
-  const [selectedVariantImage, setSelectedVariantImage] = useState(null);
+  const [combinedImages, setCombinedImages] = useState([]);
   const { name: productName } = useParams();
   const location = useLocation()?.pathname;
   const navigate = useNavigate();
+  const sliderRef = useRef(null);
 
   useEffect(() => {
     axiosPublic.get(`/products/${productName}`).then((data) => {
       setProductData(data?.data);
     });
+  }, [axiosPublic, productName]);
 
-    if (productData?._id) {
-      axiosPublic.get(`/reviews/${productData?._id}`).then((data) => {
+  useEffect(() => {
+    if (productData) {
+      axiosPublic.get(`/reviews/${productData._id}`).then((data) => {
         const reviewsData = data?.data || [];
         setReviews(reviewsData);
         calculateAverageRating(reviewsData);
       });
-    }
-  }, [axiosPublic, productName, productData?._id]);
 
   // When productData loads, if variants exist, set the default selectedColor to the first variant key (if current selectedColor is not available)
   useEffect(() => {
@@ -64,7 +66,7 @@ const ProductPage = () => {
         setOrderedQuantities((prev) => ({ ...prev, [variantKeys[0]]: 1 }));
       }
     }
-  }, [productData, selectedColor]);
+  }, [productData]);
 
   const calculateAverageRating = (reviews) => {
     if (reviews.length === 0) {
@@ -116,6 +118,7 @@ const ProductPage = () => {
       return;
     }
 
+
     const cart = {
       email: databaseUser?.email,
       productId: productData?._id,
@@ -123,37 +126,32 @@ const ProductPage = () => {
       code: "CODE" + (selectedImageIndex + 1),
     };
 
+
     try {
-      const response = await axiosPublic.post(`/cart`, cart);
-      if (response?.data?.insertedId) {
+      const responses = await Promise.all(
+        cartItems.map((item) => axiosPublic.post(`/cart`, item))
+      );
+
+      const successfulAdditions = responses.filter(
+        (response) => response?.data?.insertedId || response?.data?.status
+      );
+
+      if (successfulAdditions.length > 0) {
         Swal.fire({
           icon: "success",
-          title: "Product added to cart successfully",
+          title: "Products added to cart successfully",
         });
         refetch();
-      } else if (response?.data?.status) {
-        Swal.fire({
-          title: "Another Product added to cart successfully!",
-          icon: "success",
-          showCancelButton: true,
-          confirmButtonColor: "#3085d6",
-          cancelButtonColor: "#d33",
-          confirmButtonText: "Go Cart!",
-        }).then((result) => {
-          if (result.isConfirmed) {
-            navigate(`/dashboard/cart`);
-          }
-        });
       } else {
         Swal.fire({
           icon: "error",
-          title: "Failed to add product to cart",
+          title: "Failed to add products to cart",
         });
       }
     } catch (err) {
       Swal.fire({
         icon: "error",
-        title: "Error adding product to cart",
+        title: "Error adding products to cart",
       });
     }
   };
@@ -261,6 +259,12 @@ const ProductPage = () => {
       if (newQuantity < 0) return prev;
       return { ...prev, [variant]: newQuantity };
     });
+
+    setSelectedItemsForCart((prev) => {
+      const newQuantity = (prev[variant] || 0) + amount;
+      if (newQuantity < 0) return prev;
+      return { ...prev, [variant]: newQuantity };
+    });
   };
 
   if (!productData) {
@@ -271,7 +275,9 @@ const ProductPage = () => {
     );
   }
 
+
   const selectedVariant = productData.variants[selectedColor];
+
   const availableQuantity = selectedVariant ? selectedVariant.quantity : productData.quantity;
   const isOrderQuantityZero = orderedQuantities[selectedColor] === 0;
 
@@ -355,13 +361,11 @@ const ProductPage = () => {
                   key={idx}
                   src={media}
                   className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx && !selectedVariantImage
-                      ? "border-blue-600"
-                      : "border-gray-300"
+                    selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
                   }`}
                   onClick={() => {
                     setSelectedImageIndex(idx);
-                    setSelectedVariantImage(null);
+                    sliderRef.current.slickGoTo(idx);
                   }}
                   muted
                 />
@@ -371,13 +375,11 @@ const ProductPage = () => {
                   src={media}
                   alt={`Thumbnail ${idx}`}
                   className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx && !selectedVariantImage
-                      ? "border-blue-600"
-                      : "border-gray-300"
+                    selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
                   }`}
                   onClick={() => {
                     setSelectedImageIndex(idx);
-                    setSelectedVariantImage(null);
+                    sliderRef.current.slickGoTo(idx);
                   }}
                 />
               )
@@ -431,7 +433,8 @@ const ProductPage = () => {
                       }`}
                       onClick={() => {
                         setSelectedColor(color);
-                        setSelectedVariantImage(image);
+                        setSelectedImageIndex(productData.images.length + index);
+                        sliderRef.current.slickGoTo(productData.images.length + index);
                       }}
                     />
                   )
@@ -483,6 +486,20 @@ const ProductPage = () => {
               </button>
             </div>
           )}
+
+          {/* Selected Items for Cart */}
+          <div className="mt-8">
+            <h2 className="text-lg font-medium mb-4">Selected Items for Cart</h2>
+            {Object.entries(selectedItemsForCart).map(
+              ([variant, quantity], index) =>
+                quantity > 0 && (
+                  <div key={index} className="flex items-center justify-between border-b pb-2 mb-2">
+                    <span className="text-lg">{variant}</span>
+                    <span className="text-lg">Quantity: {quantity}</span>
+                  </div>
+                )
+            )}
+          </div>
 
           <div className="mt-6 text-2xl flex items-center space-x-5">
             <Wish id={productData?._id} />
@@ -538,26 +555,6 @@ const ProductPage = () => {
                     className="mt-2 w-32 h-32 object-cover"
                   />
                 )}
-                {/* Display selected product variant images */}
-                {productData?.variants && (
-                  <div className="mt-2">
-                    <h4 className="text-lg font-medium mb-2">
-                      Selected Product Variants
-                    </h4>
-                    <div className="flex space-x-2">
-                      {Object.entries(productData.variants).map(
-                        ([color, { image }], index) => (
-                          <img
-                            key={index}
-                            src={image}
-                            alt={color}
-                            className="w-12 h-12 rounded-lg cursor-pointer border-2 border-gray-200"
-                          />
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             ))
           ) : (
@@ -603,7 +600,5 @@ const ProductPage = () => {
     </div>
   );
 };
-
-
 
 export default ProductPage;
