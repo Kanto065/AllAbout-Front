@@ -16,7 +16,7 @@ import Swal from "sweetalert2";
 import Wish from "../../Components/Icons/Wish";
 import SingleOrder from "../../Components/PopUp/SingleOrder";
 import { FaStar } from "react-icons/fa";
-import Slider from "react-slick";
+import Slider from "react-slick"; // Import react-slick
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
@@ -56,33 +56,14 @@ const ProductPage = () => {
         calculateAverageRating(reviewsData);
       });
 
-      if (productData.variants) {
-        const variantKeys = Object.keys(productData.variants);
-        if (variantKeys.length > 0) {
-          // Initialize orderedQuantities for each variant
-          const initialQuantities = variantKeys.reduce((acc, color) => {
-            acc[color] = 0; // Set the first variant's quantity to 0, others to 0
-            return acc;
-          }, {});
-
-          setOrderedQuantities(initialQuantities);
-          setSelectedItemsForCart(initialQuantities);
-
-          // Set the default selected color and image if not already set
-          if (!variantKeys.includes(selectedColor)) {
-            setSelectedColor(variantKeys[0]);
-          }
-
-          // Combine main images and variant images
-          const mainImages = productData.images || [];
-          const variantImages = variantKeys.map(color => productData.variants[color].image);
-          setCombinedImages([...mainImages, ...variantImages]);
-        }
-      } else {
-        // If no variants, initialize with product quantity
-        setOrderedQuantities((prev) => ({ ...prev, base: 0 })); // Set initial quantity to 0
-        setSelectedItemsForCart((prev) => ({ ...prev, base: 0 }));
-        setCombinedImages(productData.images || []);
+  // When productData loads, if variants exist, set the default selectedColor to the first variant key (if current selectedColor is not available)
+  useEffect(() => {
+    if (productData && productData.variants) {
+      const variantKeys = Object.keys(productData.variants);
+      if (variantKeys.length > 0 && !variantKeys.includes(selectedColor)) {
+        setSelectedColor(variantKeys[0]);
+        setSelectedVariantImage(productData.variants[variantKeys[0]].image);
+        setOrderedQuantities((prev) => ({ ...prev, [variantKeys[0]]: 1 }));
       }
     }
   }, [productData]);
@@ -98,19 +79,22 @@ const ProductPage = () => {
   };
 
   useEffect(() => {
-    if (productData?.details) {
-      const sanitizedHTML = DOMPurify.sanitize(productData.details);
-      const content = <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
-      setDetails(content);
-    }
+    const sanitizedHTML = DOMPurify.sanitize(productData?.details);
+    const content = <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
+    setDetails(content);
   }, [productData]);
 
   const handleNextImage = () => {
-    sliderRef.current.slickNext();
+    setSelectedImageIndex(
+      (prevIndex) => (prevIndex + 1) % productData?.images.length
+    );
   };
 
   const handlePrevImage = () => {
-    sliderRef.current.slickPrev();
+    setSelectedImageIndex(
+      (prevIndex) =>
+        (prevIndex - 1 + productData?.images.length) % productData?.images.length
+    );
   };
 
   const handleShare = () => {
@@ -134,22 +118,14 @@ const ProductPage = () => {
       return;
     }
 
-    const cartItems = [];
-    const hasVariants = productData?.variants && Object.keys(productData.variants).length > 0;
 
-    // Iterate over the selected items for the cart
-    for (const [variant, quantity] of Object.entries(selectedItemsForCart)) {
-      if (quantity > 0 && (hasVariants ? variant !== 'base' : true)) {
-        const variantDetails = hasVariants ? { name: variant, image: productData.variants[variant].image } : null;
+    const cart = {
+      email: databaseUser?.email,
+      productId: productData?._id,
+      quantity: orderedQuantities[selectedColor],
+      code: "CODE" + (selectedImageIndex + 1),
+    };
 
-        cartItems.push({
-          email: databaseUser?.email,
-          productId: productData?._id,
-          variant: variantDetails,
-          quantity,
-        });
-      }
-    }
 
     try {
       const responses = await Promise.all(
@@ -299,19 +275,20 @@ const ProductPage = () => {
     );
   }
 
+
+  const selectedVariant = productData.variants[selectedColor];
+
+  const availableQuantity = selectedVariant ? selectedVariant.quantity : productData.quantity;
+  const isOrderQuantityZero = orderedQuantities[selectedColor] === 0;
+
   const settings = {
     dots: true,
-    infinite: false, // Set to false to prevent duplication
+    infinite: true,
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
     arrows: false,
-    beforeChange: (current, next) => setSelectedImageIndex(next),
   };
-
-  const selectedVariant = productData.variants ? productData.variants[selectedColor] : null;
-  const availableQuantity = selectedVariant ? selectedVariant.quantity : productData.quantity;
-  const isOrderQuantityZero = productData.variants ? orderedQuantities[selectedColor] === 0 : orderedQuantities.base === 0;
 
   return (
     <div className="max-w-[95%] 2xl:max-w-7xl mx-auto pt-32 md:pt-48 pb-10">
@@ -320,9 +297,9 @@ const ProductPage = () => {
         <div className="flex-1 w-full mx-auto">
           <div className="relative rounded-lg overflow-hidden bg-white mb-4 lg:w-10/12 mx-auto">
             <div className="hidden lg:block">
-              {isVideo(combinedImages[selectedImageIndex]) ? (
+              {isVideo(selectedVariantImage || productData?.images[selectedImageIndex]) ? (
                 <video
-                  src={combinedImages[selectedImageIndex]}
+                  src={selectedVariantImage || productData?.images[selectedImageIndex]}
                   autoPlay
                   loop
                   muted
@@ -333,7 +310,7 @@ const ProductPage = () => {
                 </video>
               ) : (
                 <img
-                  src={combinedImages[selectedImageIndex]}
+                  src={selectedVariantImage || productData?.images[selectedImageIndex]}
                   alt="Selected Product"
                   className="w-full min-h-[400px] h-full object-contain"
                 />
@@ -352,8 +329,8 @@ const ProductPage = () => {
               </button>
             </div>
             <div className="lg:hidden">
-              <Slider {...settings} ref={sliderRef}>
-                {combinedImages.map((media, idx) =>
+              <Slider {...settings}>
+                {productData?.images?.map((media, idx) =>
                   isVideo(media) ? (
                     <video
                       key={idx}
@@ -378,40 +355,7 @@ const ProductPage = () => {
           </div>
 
           <div className="hidden lg:flex justify-center items-center space-x-2 overflow-x-auto">
-            {combinedImages.map((media, idx) =>
-              isVideo(media) ? (
-                <video
-                  key={idx}
-                  src={media}
-                  className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
-                  }`}
-                  onClick={() => {
-                    setSelectedImageIndex(idx);
-                    sliderRef.current.slickGoTo(idx);
-                  }}
-                  muted
-                />
-              ) : (
-                <img
-                  key={idx}
-                  src={media}
-                  alt={`Thumbnail ${idx}`}
-                  className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
-                  }`}
-                  onClick={() => {
-                    setSelectedImageIndex(idx);
-                    sliderRef.current.slickGoTo(idx);
-                  }}
-                />
-              )
-            )}
-          </div>
-
-          {/* Mobile View - Small Preview Images */}
-          <div className="lg:hidden flex justify-center items-center space-x-2 overflow-x-auto mt-4">
-            {combinedImages.map((media, idx) =>
+            {productData?.images?.map((media, idx) =>
               isVideo(media) ? (
                 <video
                   key={idx}
@@ -505,17 +449,17 @@ const ProductPage = () => {
               <span className="font-medium text-lg">Order Quantity: </span>
               <div className="flex items-center gap-2 mt-2">
                 <button
-                  onClick={() => handleQuantityChange(productData.variants ? selectedColor : 'base', -1)}
+                  onClick={() => handleQuantityChange(selectedColor, -1)}
                   className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
-                  disabled={isOrderQuantityZero}
+                  disabled={orderedQuantities[selectedColor] <= 0}
                 >
                   -
                 </button>
-                <span className="text-lg">{productData.variants ? orderedQuantities[selectedColor] : orderedQuantities.base}</span>
+                <span className="text-lg">{orderedQuantities[selectedColor]}</span>
                 <button
-                  onClick={() => handleQuantityChange(productData.variants ? selectedColor : 'base', 1)}
+                  onClick={() => handleQuantityChange(selectedColor, 1)}
                   className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
-                  disabled={orderedQuantities[productData.variants ? selectedColor : 'base'] >= availableQuantity}
+                  disabled={orderedQuantities[selectedColor] >= availableQuantity}
                 >
                   +
                 </button>
@@ -531,7 +475,7 @@ const ProductPage = () => {
             <div className="mt-6 flex flex-col md:flex-row gap-4">
               <SingleOrder
                 productName={productData?.name}
-                adiInfo={{ order: productData.variants ? orderedQuantities[selectedColor] : orderedQuantities.base, selectedImageIndex }}
+                adiInfo={{ order: orderedQuantities[selectedColor], selectedImageIndex }}
               />
               <button
                 onClick={handleCart}

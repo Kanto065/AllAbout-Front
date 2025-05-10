@@ -170,9 +170,9 @@ export default function CartItem({ product, reload, message }) {
     <div className="border-b transition duration-300 flex space-x-5 pb-2">
       <div className="flex items-center justify-center w-1/5 md:w-1/5">
         <img
-          src={variantImage}
+          src={product?.images[0]}
           alt={product?.name}
-          className="h-32 w-full object-contain bg-white-300"
+          className="h-32 w-full object-contain bg-gray-300"
         />
       </div>
       <div className="w-4/5 flex flex-col justify-between">
