@@ -147,7 +147,7 @@ const ProductPage = () => {
       } else {
         Swal.fire({
           icon: "error",
-          title: "Failed to add products to cart",
+          title: "Add a product first to cart",  
         });
       }
     } catch (err) {
@@ -361,55 +361,55 @@ const ProductPage = () => {
             </div>
           </div>
 
-          <div className="hidden lg:flex justify-center items-center space-x-2 overflow-x-auto">
-            {productData?.images?.map((media, idx) =>
-              isVideo(media) ? (
-                <video
-                  key={idx}
-                  src={media}
-                  className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
-                  }`}
-                  onClick={() => {
-                    setSelectedImageIndex(idx);
-                    sliderRef.current?.slickGoTo(idx);
-                  }}
-                  muted
-                />
-              ) : (
-                <img
-                  key={idx}
-                  src={media}
-                  alt={`Thumbnail ${idx}`}
-                  className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
-                  }`}
-                  onClick={() => {
-                    setSelectedImageIndex(idx);
-                    sliderRef.current?.slickGoTo(idx);
-                  }}
-                />
-              )
-            )}
-            {productData?.variants &&
-              Object.entries(productData.variants).map(([color, { image }], idx) => (
-                <img
-                  key={`variant-thumb-${idx}`}
-                  src={image}
-                  alt={color}
-                  className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === productData.images.length + idx
-                      ? "border-blue-600"
-                      : "border-gray-300"
-                  }`}
-                  onClick={() => {
-                    const newIndex = productData.images.length + idx;
-                    setSelectedImageIndex(newIndex);
-                    sliderRef.current?.slickGoTo(newIndex);
-                  }}
-                />
-              ))}
-          </div>
+          <div className="flex justify-center items-center space-x-2 overflow-x-auto lg:space-x-2">
+  {productData?.images?.map((media, idx) =>
+    isVideo(media) ? (
+      <video
+        key={idx}
+        src={media}
+        className={`w-12 h-12 object-cover rounded-lg cursor-pointer border-2 ${
+          selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
+        }`}
+        onClick={() => {
+          setSelectedImageIndex(idx);
+          sliderRef.current?.slickGoTo(idx);
+        }}
+        muted
+      />
+    ) : (
+      <img
+        key={idx}
+        src={media}
+        alt={`Thumbnail ${idx}`}
+        className={`w-12 h-12 object-cover rounded-lg cursor-pointer border-2 ${
+          selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
+        }`}
+        onClick={() => {
+          setSelectedImageIndex(idx);
+          sliderRef.current?.slickGoTo(idx);
+        }}
+      />
+    )
+  )}
+  {productData?.variants &&
+    Object.entries(productData.variants).map(([color, { image }], idx) => (
+      <img
+        key={`variant-thumb-${idx}`}
+        src={image}
+        alt={color}
+        className={`w-12 h-12 object-cover rounded-lg cursor-pointer border-2 ${
+          selectedImageIndex === productData.images.length + idx
+            ? "border-blue-600"
+            : "border-gray-300"
+        }`}
+        onClick={() => {
+          const newIndex = productData.images.length + idx;
+          setSelectedImageIndex(newIndex);
+          sliderRef.current?.slickGoTo(newIndex);
+        }}
+      />
+    ))}
+</div>
         </div>
 
         {/* Right - Product Details */}
