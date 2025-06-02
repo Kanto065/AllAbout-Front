@@ -33,9 +33,16 @@ export default function Products() {
           `/products?page=${page}&limit=10&type=${typ}`
         );
         if (res?.data.length < 10) {
-          setHasMore(false); // No more products to load
+          setHasMore(false);
         }
-        setShowProducts((prevProducts) => [...prevProducts, ...res?.data]);
+        
+        // Filter out any duplicate products based on _id
+        setShowProducts((prevProducts) => {
+          const newProducts = res?.data || [];
+          const existingIds = new Set(prevProducts.map(p => p._id));
+          const uniqueNewProducts = newProducts.filter(p => !existingIds.has(p._id));
+          return [...prevProducts, ...uniqueNewProducts];
+        });
       } catch (error) {
         console.error("Error fetching products:", error);
       } finally {
@@ -83,15 +90,15 @@ export default function Products() {
       </ul>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {showProducts?.map((product, index) => {
-          if (showProducts.length === index + 1) {
-            return (
-              <div ref={lastProductRef} key={product?._id}>
-                <Product product={product} />
-              </div>
-            );
-          } else {
-            return <Product key={product?._id} product={product} />;
-          }
+          const isLastElement = showProducts.length === index + 1;
+          return (
+            <div 
+              key={`${product._id}-${index}`} 
+              ref={isLastElement ? lastProductRef : null}
+            >
+              <Product product={product} />
+            </div>
+          );
         })}
         {loading && (
           <div className="min-h-[50vh] animate-pulse w-full bg-slate-100"></div>
