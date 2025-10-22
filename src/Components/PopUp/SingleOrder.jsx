@@ -103,12 +103,19 @@ export default function SingleOrder({ productName, adiInfo }) {
 
   return (
     <div>
-      <button
-        onClick={() => setOpenModal(true)}
-        className="w-full px-6 py-3 bg-[#e65c5c] text-white rounded-lg transition"
-      >
-        Buy Now
-      </button>
+          <button
+          onClick={() => {
+            if (!orderedQuantity || orderedQuantity <= 0) {
+              alert("Please add at least one product to your cart before purchasing.");
+              return;
+            }
+            setOpenModal(true);
+          }}
+          className="w-full px-6 py-3 bg-[#e65c5c] text-white rounded-lg transition"
+        >
+          Buy Now
+        </button>
+
 
       {openModal && (
         <div

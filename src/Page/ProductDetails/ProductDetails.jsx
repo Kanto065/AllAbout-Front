@@ -16,7 +16,7 @@ import Swal from "sweetalert2";
 import Wish from "../../Components/Icons/Wish";
 import SingleOrder from "../../Components/PopUp/SingleOrder";
 import { FaStar } from "react-icons/fa";
-import Slider from "react-slick"; // Import react-slick
+import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
@@ -55,15 +55,16 @@ const ProductPage = () => {
         setReviews(reviewsData);
         calculateAverageRating(reviewsData);
       });
+    }
+  }, [productData]);
 
-  // When productData loads, if variants exist, set the default selectedColor to the first variant key (if current selectedColor is not available)
   useEffect(() => {
     if (productData && productData.variants) {
       const variantKeys = Object.keys(productData.variants);
       if (variantKeys.length > 0 && !variantKeys.includes(selectedColor)) {
         setSelectedColor(variantKeys[0]);
-        setSelectedVariantImage(productData.variants[variantKeys[0]].image);
-        setOrderedQuantities((prev) => ({ ...prev, [variantKeys[0]]: 1 }));
+        setSelectedImageIndex(productData.images.length);
+        sliderRef.current?.slickGoTo(productData.images.length);
       }
     }
   }, [productData]);
@@ -86,14 +87,14 @@ const ProductPage = () => {
 
   const handleNextImage = () => {
     setSelectedImageIndex(
-      (prevIndex) => (prevIndex + 1) % productData?.images.length
+      (prevIndex) => (prevIndex + 1) % (productData?.images?.length || 1)
     );
   };
 
   const handlePrevImage = () => {
     setSelectedImageIndex(
       (prevIndex) =>
-        (prevIndex - 1 + productData?.images.length) % productData?.images.length
+        (prevIndex - 1 + (productData?.images?.length || 1)) % (productData?.images?.length || 1)
     );
   };
 
@@ -118,14 +119,15 @@ const ProductPage = () => {
       return;
     }
 
-
-    const cart = {
-      email: databaseUser?.email,
-      productId: productData?._id,
-      quantity: orderedQuantities[selectedColor],
-      code: "CODE" + (selectedImageIndex + 1),
-    };
-
+    const cartItems = Object.entries(selectedItemsForCart)
+      .filter(([_, quantity]) => quantity > 0)
+      .map(([variant, quantity]) => ({
+        email: databaseUser?.email,
+        productId: productData?._id,
+        quantity: quantity,
+        variant: variant,
+        code: "CODE" + (selectedImageIndex + 1),
+      }));
 
     try {
       const responses = await Promise.all(
@@ -145,7 +147,7 @@ const ProductPage = () => {
       } else {
         Swal.fire({
           icon: "error",
-          title: "Failed to add products to cart",
+          title: "Add a product first to cart",  
         });
       }
     } catch (err) {
@@ -158,7 +160,7 @@ const ProductPage = () => {
 
   const handleImageChange = (event) => {
     const files = Array.from(event.target.files);
-    setReviewImage(files[0]); // Set the first selected file as the review image
+    setReviewImage(files[0]);
   };
 
   const uploadImage = async (file) => {
@@ -175,7 +177,7 @@ const ProductPage = () => {
           },
         }
       );
-      return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`; // Adjust according to your server response
+      return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`;
     } catch (error) {
       throw new Error("File upload failed");
     }
@@ -207,14 +209,11 @@ const ProductPage = () => {
       image: imageURL,
     };
 
-    console.log("Review Data:", reviewData); // Log the review data being sent
-
     try {
       const response = await axiosPublic.post(
         `/reviews/${productData?._id}`,
         reviewData
       );
-      console.log("Review Submission Response:", response); // Log the response from the server
       if (response?.data?.insertedId) {
         Swal.fire({
           icon: "success",
@@ -233,7 +232,7 @@ const ProductPage = () => {
         });
       }
     } catch (err) {
-      console.error("Error submitting review:", err); // Log the error
+      console.error("Error submitting review:", err);
       Swal.fire({
         icon: "error",
         title: "Error submitting review",
@@ -275,9 +274,8 @@ const ProductPage = () => {
     );
   }
 
-
-  const selectedVariant = productData.variants[selectedColor];
-
+  const selectedVariant = productData.variants?.[selectedColor];
+  const selectedVariantImage = selectedVariant?.image;
   const availableQuantity = selectedVariant ? selectedVariant.quantity : productData.quantity;
   const isOrderQuantityZero = orderedQuantities[selectedColor] === 0;
 
@@ -329,7 +327,7 @@ const ProductPage = () => {
               </button>
             </div>
             <div className="lg:hidden">
-              <Slider {...settings}>
+              <Slider {...settings} ref={sliderRef}>
                 {productData?.images?.map((media, idx) =>
                   isVideo(media) ? (
                     <video
@@ -350,41 +348,68 @@ const ProductPage = () => {
                     />
                   )
                 )}
+                {productData?.variants &&
+                  Object.entries(productData.variants).map(([_, { image }], idx) => (
+                    <img
+                      key={`variant-${idx}`}
+                      src={image}
+                      alt={`Variant ${idx}`}
+                      className="w-full h-[400px] object-contain"
+                    />
+                  ))}
               </Slider>
             </div>
           </div>
 
-          <div className="hidden lg:flex justify-center items-center space-x-2 overflow-x-auto">
-            {productData?.images?.map((media, idx) =>
-              isVideo(media) ? (
-                <video
-                  key={idx}
-                  src={media}
-                  className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
-                  }`}
-                  onClick={() => {
-                    setSelectedImageIndex(idx);
-                    sliderRef.current.slickGoTo(idx);
-                  }}
-                  muted
-                />
-              ) : (
-                <img
-                  key={idx}
-                  src={media}
-                  alt={`Thumbnail ${idx}`}
-                  className={`w-14 h-14 object-cover rounded-lg cursor-pointer border-2 ${
-                    selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
-                  }`}
-                  onClick={() => {
-                    setSelectedImageIndex(idx);
-                    sliderRef.current.slickGoTo(idx);
-                  }}
-                />
-              )
-            )}
-          </div>
+          <div className="flex justify-center items-center space-x-2 overflow-x-auto lg:space-x-2">
+  {productData?.images?.map((media, idx) =>
+    isVideo(media) ? (
+      <video
+        key={idx}
+        src={media}
+        className={`w-12 h-12 object-cover rounded-lg cursor-pointer border-2 ${
+          selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
+        }`}
+        onClick={() => {
+          setSelectedImageIndex(idx);
+          sliderRef.current?.slickGoTo(idx);
+        }}
+        muted
+      />
+    ) : (
+      <img
+        key={idx}
+        src={media}
+        alt={`Thumbnail ${idx}`}
+        className={`w-12 h-12 object-cover rounded-lg cursor-pointer border-2 ${
+          selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
+        }`}
+        onClick={() => {
+          setSelectedImageIndex(idx);
+          sliderRef.current?.slickGoTo(idx);
+        }}
+      />
+    )
+  )}
+  {productData?.variants &&
+    Object.entries(productData.variants).map(([color, { image }], idx) => (
+      <img
+        key={`variant-thumb-${idx}`}
+        src={image}
+        alt={color}
+        className={`w-12 h-12 object-cover rounded-lg cursor-pointer border-2 ${
+          selectedImageIndex === productData.images.length + idx
+            ? "border-blue-600"
+            : "border-gray-300"
+        }`}
+        onClick={() => {
+          const newIndex = productData.images.length + idx;
+          setSelectedImageIndex(newIndex);
+          sliderRef.current?.slickGoTo(newIndex);
+        }}
+      />
+    ))}
+</div>
         </div>
 
         {/* Right - Product Details */}
@@ -434,7 +459,7 @@ const ProductPage = () => {
                       onClick={() => {
                         setSelectedColor(color);
                         setSelectedImageIndex(productData.images.length + index);
-                        sliderRef.current.slickGoTo(productData.images.length + index);
+                        sliderRef.current?.slickGoTo(productData.images.length + index);
                       }}
                     />
                   )
@@ -444,7 +469,7 @@ const ProductPage = () => {
           )}
 
           {/* Quantity Selector */}
-          <div className={`mt-4`}>
+          <div className="mt-4">
             <div className="flex items-center space-x-2">
               <span className="font-medium text-lg">Order Quantity: </span>
               <div className="flex items-center gap-2 mt-2">
@@ -455,7 +480,7 @@ const ProductPage = () => {
                 >
                   -
                 </button>
-                <span className="text-lg">{orderedQuantities[selectedColor]}</span>
+                <span className="text-lg">{orderedQuantities[selectedColor] || 0}</span>
                 <button
                   onClick={() => handleQuantityChange(selectedColor, 1)}
                   className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
@@ -479,7 +504,9 @@ const ProductPage = () => {
               />
               <button
                 onClick={handleCart}
-                className={`px-6 py-3 bg-[#7dd67d] text-white rounded-lg transition ${isOrderQuantityZero ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`px-6 py-3 bg-[#7dd67d] text-white rounded-lg transition ${
+                  isOrderQuantityZero ? "opacity-50 cursor-not-allowed" : ""
+                }`}
                 disabled={isOrderQuantityZero}
               >
                 Add to Cart
