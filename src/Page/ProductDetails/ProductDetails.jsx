@@ -169,7 +169,7 @@ const ProductPage = () => {
 
     try {
       const response = await axiosPublic.post(
-        "https://server.allaboutcraftbd.com/upload",
+        "https://server.allaboutcraftbd.shop/upload",
         formData,
         {
           headers: {
@@ -177,7 +177,7 @@ const ProductPage = () => {
           },
         }
       );
-      return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`;
+      return `https://server.allaboutcraftbd.shop/uploads/${response.data.file.filename}`;
     } catch (error) {
       throw new Error("File upload failed");
     }

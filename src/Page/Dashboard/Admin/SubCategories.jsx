@@ -27,7 +27,7 @@ const SubCategories = () => {
 
     try {
       const response = await axios.post(
-        "https://server.allaboutcraftbd.com/upload",
+        "https://server.allaboutcraftbd.shop/upload",
         formData,
         {
           headers: {

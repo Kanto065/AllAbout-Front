@@ -27,7 +27,7 @@ const Categories = () => {
 
     try {
       const response = await axios.post(
-        "https://server.allaboutcraftbd.com/upload",
+        "https://server.allaboutcraftbd.shop/upload",
         formData,
         {
           headers: {
@@ -35,7 +35,7 @@ const Categories = () => {
           },
         }
       );
-      return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`; // Adjust according to your server response
+      return `https://server.allaboutcraftbd.shop/uploads/${response.data.file.filename}`; // Adjust according to your server response
     } catch (error) {
       throw new Error("File upload failed");
     }

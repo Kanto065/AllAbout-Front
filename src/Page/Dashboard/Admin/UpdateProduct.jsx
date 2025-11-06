@@ -113,12 +113,12 @@ export default function UpdateProduct() {
         formData.append('file', file);
     
         try {
-            const response = await axios.post('https://server.allaboutcraftbd.com/upload', formData, {
+            const response = await axios.post('https://server.allaboutcraftbd.shop/upload', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            return `https://server.allaboutcraftbd.com/uploads/${response.data.file.filename}`;
+            return `https://server.allaboutcraftbd.shop/uploads/${response.data.file.filename}`;
         } catch (error) {
             // Log detailed error information
             console.error('File upload failed:', error.response ? error.response.data : error.message);
