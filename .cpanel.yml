@@ -1,4 +1,9 @@
 deployment:
   tasks:
+    - export PROJECT_DIR=/home/allankfn/repositories/AllAbout-Front
+    - cd $PROJECT_DIR
+    - /bin/npm install
+    - /bin/npm run build
     - export DEPLOYPATH=/home/allankfn/public_html/
-    - /bin/cp -R * $DEPLOYPATH
+    - /bin/rm -rf $DEPLOYPATH/*
+    - /bin/cp -R dist/* $DEPLOYPATH
