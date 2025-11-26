@@ -1,76 +1,64 @@
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import axios from 'axios';
 import JoditEditor from 'jodit-react';
+import { FaImage } from 'react-icons/fa';
 import useAxiosPublic from '../../../Hooks/useAxiosPublic';
 import useCategories from '../../../Hooks/useCategories';
 import useMainCategories from '../../../Hooks/useMainCategories';
 import useSubCategories from '../../../Hooks/useSubCategories';
 
-export default function AddProduct({ setAdd, setReload, presentProduct }) {
+export default function AddProduct({ setAdd, setReload }) {
     const axiosPublic = useAxiosPublic();
     const [mainCategories] = useMainCategories();
     const [categories] = useCategories();
     const [subCategories] = useSubCategories();
-    const [name, setName] = useState('');
-    const [price, setPrice] = useState(0);
-    const [cost, setCost] = useState(0);
-    const [quantity, setQuantity] = useState(0);
-    const [mainCategory, setMainCategory] = useState('');
-    const [type, setType] = useState('');
-    const [subCategory, setSubCategory] = useState('');
-    const [description, setDescription] = useState('');
-    const [details, setDetails] = useState('');
+
+    // Form state
+    const [formData, setFormData] = useState({
+        name: '',
+        mainCategory: '',
+        category: '',
+        subCategory: '',
+        price: 0,
+        cost: 0,
+        quantity: 0,
+        discount: 0,
+        description: '',
+        details: ''
+    });
+
     const [images, setImages] = useState([]);
-    const [discount, setDiscount] = useState(0);
-    const [message, setMessage] = useState('');
+    const [imagePreviews, setImagePreviews] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState([]);
-    const [selectedSubCategory, setSelectedSubCategory] = useState([]);
-    const [variants, setVariants] = useState([{ name: '', image: null, quantity: 0 }]);
+    const [message, setMessage] = useState('');
 
-    const handleVariantNameChange = (index, value) => {
-        const updatedVariants = [...variants];
-        updatedVariants[index].name = value;
-        setVariants(updatedVariants);
+    // Filter categories based on selected main category
+    const filteredCategories = useMemo(() => {
+        return categories?.filter(cat => cat?.mainCategory === formData.mainCategory) || [];
+    }, [categories, formData.mainCategory]);
+
+    // Filter subcategories based on selected category
+    const filteredSubCategories = useMemo(() => {
+        return subCategories?.filter(sub => sub?.category === formData.category) || [];
+    }, [subCategories, formData.category]);
+
+    const handleChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleVariantQuantityChange = (index, value) => {
-        const updatedVariants = [...variants];
-        updatedVariants[index].quantity = value;
-        setVariants(updatedVariants);
+    const handleImageChange = (e) => {
+        const files = Array.from(e.target.files);
+        setImages(prev => [...prev, ...files]);
+
+        // Create previews
+        const previews = files.map(file => URL.createObjectURL(file));
+        setImagePreviews(prev => [...prev, ...previews]);
     };
 
-    const handleVariantImageChange = (index, file) => {
-        const updatedVariants = [...variants];
-        updatedVariants[index].image = file;
-        setVariants(updatedVariants);
-    };
-
-    const handleAddVariantInput = () => {
-        setVariants([...variants, { name: '', image: null, quantity: 0 }]);
-    };
-
-    const handleRemoveVariantInput = (index) => {
-        const updatedVariants = variants.filter((_, i) => i !== index);
-        setVariants(updatedVariants);
-    };
-
-    useEffect(() => {
-        setSelectedCategory(
-            categories?.filter(item => item?.mainCategory === mainCategory)
-        );
-    }, [categories, mainCategory]);
-
-    useEffect(() => {
-        setSelectedSubCategory(
-            subCategories?.filter(item => item?.category === type)
-        );
-    }, [subCategories, type]);
-
-    const handleImageChange = (event) => {
-        const files = Array.from(event.target.files);
-        setImages(prevImages => [...prevImages, ...files]);
+    const handleRemoveImage = (index) => {
+        setImages(prev => prev.filter((_, i) => i !== index));
+        setImagePreviews(prev => prev.filter((_, i) => i !== index));
     };
 
     const uploadImage = async (file) => {
@@ -83,81 +71,55 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-            return `https://server.allaboutcraftbd.shop/uploads/${response.data.file.filename}`; // Adjust according to your server response
+            return `https://server.allaboutcraftbd.shop/uploads/${response.data.file.filename}`;
         } catch (error) {
-            throw new Error('File upload failed');
+            console.error('Image upload failed:', error);
+            throw new Error('Image upload failed');
         }
     };
 
-    const handleFormSubmit = async (event) => {
-        event.preventDefault();
+    const handleSubmit = async (e) => {
+        e.preventDefault();
         setLoading(true);
+        setMessage('');
 
         try {
-            let uploadedImageURLs = [];
-
-            // Upload images one by one
+            // Upload all images
+            const uploadedImages = [];
             for (const image of images) {
                 const imageURL = await uploadImage(image);
-                uploadedImageURLs.push(imageURL);
+                uploadedImages.push(imageURL);
             }
 
-            const uploadedVariantImages = await Promise.all(
-                variants.map((variant) =>
-                    variant.image ? uploadImage(variant.image) : null
-                )
-            );
-
-            var variantsData = variants.reduce((acc, variant, index) => {
-                if (variant.name && uploadedVariantImages[index]) {
-                    acc[variant.name] = {
-                        image: uploadedVariantImages[index],
-                        quantity: variant.quantity
-                    };
-                }
-                return acc;
-            }, {});
-
-            variantsData = Object.keys(variantsData).length === 0 ? null : variantsData;
-
-            // Create new product with uploaded file URLs
+            // Create product
             const newProduct = {
-                name,
-                price: parseInt(price),
-                quantity: parseInt(quantity),
-                mainCategory,
-                category: type,
-                subCategory,
-                description,
-                details,
-                cost: parseInt(cost),
-                variants: variantsData,
-                images: uploadedImageURLs,
-                discount: parseFloat(discount),
-                number: parseInt(presentProduct) + 1,
+                name: formData.name,
+                mainCategory: formData.mainCategory,
+                category: formData.category,
+                subCategory: formData.subCategory || '',
+                price: parseInt(formData.price),
+                cost: parseInt(formData.cost),
+                quantity: parseInt(formData.quantity),
+                discount: parseFloat(formData.discount),
+                description: formData.description,
+                details: formData.details || '',
+                images: uploadedImages
             };
+
             const response = await axiosPublic.post('/products', newProduct);
 
             if (response?.data?.insertedId) {
-                setMessage('Product added successfully');
-                setName('');
-                setPrice(0);
-                setQuantity(0);
-                setCost(0);
-                setMainCategory('');
-                setType('');
-                setSubCategory('');
-                setDescription('');
-                setDetails('');
-                setImages([]);
-                setDiscount(0);
-                setVariants([{ name: '', image: null, quantity: 0 }]);
-                setAdd(false);
-                setReload(true);
+                setMessage('Product added successfully!');
+                setTimeout(() => {
+                    setAdd(false);
+                    setReload(true);
+                }, 1500);
             } else {
-                console.error('Response data did not contain expected fields:', response.data);
                 setMessage('Failed to add product');
             }
+        } catch (error) {
+            console.error('Error adding product:', error);
+            setMessage('An error occurred while adding the product');
         } finally {
             setLoading(false);
         }
@@ -168,247 +130,277 @@ export default function AddProduct({ setAdd, setReload, presentProduct }) {
             <Helmet>
                 <title>All About Craft BD | Add Product</title>
             </Helmet>
-            <h2 className="text-center text-4xl font-bold mb-5">Create a Product</h2>
 
-            <form className="space-y-4" onSubmit={handleFormSubmit}>
-                <div className="flex flex-col lg:flex-row">
-                    <div className="lg:w-1/2 pr-2">
-                        <label className="text-lg font-medium">Name:</label><br />
-                        <input
-                            className="p-2 rounded bg-gray-200 w-full"
-                            name="name"
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                            placeholder='Enter The Product Name'
-                        />
-                    </div>
+            <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-md max-w-5xl mx-auto">
+                <div>
+                    <h3 className="text-2xl font-bold mb-4">Add Single Product</h3>
+                    <p className="text-gray-600 mb-6">
+                        Add a single product without variants. For products with variants, use "Add Product With Variants".
+                    </p>
+                </div>
 
-                    <div className="lg:w-1/2 pl-2">
-                        <label className="text-lg font-medium">Main Category:</label><br />
+                {/* Product Name */}
+                <div>
+                    <label className="text-lg font-medium block mb-2">
+                        Product Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        className="p-2 rounded bg-gray-200 w-full"
+                        value={formData.name}
+                        onChange={(e) => handleChange('name', e.target.value)}
+                        required
+                        placeholder="Enter product name"
+                    />
+                </div>
+
+                {/* Categories */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Main Category <span className="text-red-500">*</span>
+                        </label>
                         <select
                             className="p-2 rounded bg-gray-200 w-full"
-                            name="mainCategory"
-                            value={mainCategory}
-                            onChange={(e) => setMainCategory(e.target.value)}
+                            value={formData.mainCategory}
+                            onChange={(e) => {
+                                handleChange('mainCategory', e.target.value);
+                                handleChange('category', '');
+                                handleChange('subCategory', '');
+                            }}
                             required
-                            placeholder='Enter The Product Category'
                         >
                             <option value="">Select Main Category</option>
-                            {
-                                mainCategories?.map((category, idx) =>
-                                    <option key={idx} value={category?.name}>{category?.name}</option>
-                                )
-                            }
+                            {mainCategories?.map((category, idx) => (
+                                <option key={idx} value={category?.name}>
+                                    {category?.name}
+                                </option>
+                            ))}
                         </select>
                     </div>
-                </div>
-                <div className="flex flex-col lg:flex-row">
-                    <div className="lg:w-1/2 pr-2">
-                        <label className="text-lg font-medium">Category:</label><br />
+
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Category <span className="text-red-500">*</span>
+                        </label>
                         <select
                             className="p-2 rounded bg-gray-200 w-full"
-                            name="type"
-                            value={type}
-                            onChange={(e) => setType(e.target.value)}
+                            value={formData.category}
+                            onChange={(e) => {
+                                handleChange('category', e.target.value);
+                                handleChange('subCategory', '');
+                            }}
                             required
-                            placeholder='Enter The Product Category'
+                            disabled={!formData.mainCategory}
                         >
                             <option value="">Select Category</option>
-                            {
-                                selectedCategory?.map((category, idx) =>
-                                    <option key={idx} value={category?.name}>{category?.name}</option>
-                                )
-                            }
+                            {filteredCategories?.map((category, idx) => (
+                                <option key={idx} value={category?.name}>
+                                    {category?.name}
+                                </option>
+                            ))}
                         </select>
                     </div>
-                    <div className="lg:w-1/2 pl-2">
-                        <label className="text-lg font-medium">Sub Category:</label><br />
+
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Sub Category <span className="text-gray-500">(Optional)</span>
+                        </label>
                         <select
                             className="p-2 rounded bg-gray-200 w-full"
-                            name="subcategory"
-                            value={subCategory}
-                            onChange={(e) => setSubCategory(e.target.value)}
-                            placeholder='Enter The Product Category'
+                            value={formData.subCategory}
+                            onChange={(e) => handleChange('subCategory', e.target.value)}
+                            disabled={!formData.category}
                         >
                             <option value="">Select Sub Category</option>
-                            {
-                                selectedSubCategory?.map((category, idx) =>
-                                    <option key={idx} value={category?.name}>{category?.name}</option>
-                                )
-                            }
+                            {filteredSubCategories?.map((category, idx) => (
+                                <option key={idx} value={category?.name}>
+                                    {category?.name}
+                                </option>
+                            ))}
                         </select>
                     </div>
                 </div>
-                <div className="flex flex-col lg:flex-row">
-                    <div className="lg:w-1/2 pr-2">
-                        <label className="text-lg font-medium">Quantity:</label><br />
+
+                {/* Pricing */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Price (৳) <span className="text-red-500">*</span>
+                        </label>
                         <input
-                            className="p-2 rounded bg-gray-200 w-full"
-                            name="quantity"
                             type="number"
-                            value={quantity}
-                            onChange={(e) => setQuantity(e.target.value)}
+                            className="p-2 rounded bg-gray-200 w-full"
+                            value={formData.price}
+                            onChange={(e) => handleChange('price', e.target.value)}
                             required
-                            placeholder='Enter The Product Quantity'
+                            min="0"
+                            placeholder="80"
                         />
                     </div>
-                    <div className="lg:w-1/2 pl-2">
-                        <label className="text-lg font-medium">Total Cost:</label><br />
+
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Cost (৳) <span className="text-red-500">*</span>
+                        </label>
                         <input
-                            className="p-2 rounded bg-gray-200 w-full"
-                            name="cost"
                             type="number"
-                            value={cost}
-                            onChange={(e) => setCost(e.target.value)}
+                            className="p-2 rounded bg-gray-200 w-full"
+                            value={formData.cost}
+                            onChange={(e) => handleChange('cost', e.target.value)}
                             required
-                            placeholder='Enter The Product Cost'
+                            min="0"
+                            placeholder="35"
                         />
                     </div>
-                </div>
-                <div className="flex flex-col lg:flex-row">
-                    <div className="lg:w-1/2 pr-2">
-                        <label className="text-lg font-medium">Price:</label><br />
+
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Quantity <span className="text-red-500">*</span>
+                        </label>
                         <input
-                            className="p-2 rounded bg-gray-200 w-full"
-                            name="price"
                             type="number"
-                            value={price}
-                            onChange={(e) => setPrice(e.target.value)}
+                            className="p-2 rounded bg-gray-200 w-full"
+                            value={formData.quantity}
+                            onChange={(e) => handleChange('quantity', e.target.value)}
                             required
-                            placeholder='Enter The Product Price'
+                            min="0"
+                            placeholder="10"
                         />
                     </div>
-                    <div className="lg:w-1/2 pl-2">
-                        <label className="text-lg font-medium">Discount (%):</label><br />
+
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Discount (%)
+                        </label>
                         <input
-                            className="p-2 rounded bg-gray-200 w-full"
-                            name="discount"
                             type="number"
-                            value={discount}
-                            onChange={(e) => setDiscount(e.target.value)}
-                            required
-                            placeholder='Enter The Product Discount'
+                            className="p-2 rounded bg-gray-200 w-full"
+                            value={formData.discount}
+                            onChange={(e) => handleChange('discount', e.target.value)}
+                            min="0"
+                            max="100"
+                            placeholder="0"
                         />
                     </div>
-                </div>
-                <div className="">
-                    <label className="text-lg font-medium">Description:</label><br />
-                    <textarea
-                        className="p-2 rounded bg-gray-200 w-full"
-                        name="description"
-                        rows={3}
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        required
-                        placeholder='Enter The Product Description'
-                    />
                 </div>
 
-                <div className="py-5">
-                    {/* Add Variant Button */}
-                    <button
-                        type="button"
-                        className="mb-4 px-4 py-2 bg-green-500 text-white rounded"
-                        onClick={handleAddVariantInput}
-                    >
-                        {variants.length === 0 ? 'Add Product Variant' : 'Add Another Product Variant'}
-                    </button>
+                {/* Profit Margin Display */}
+                {formData.price > 0 && formData.cost > 0 && (
+                    <div className="p-2 bg-green-50 border border-green-200 rounded">
+                        <p className="text-sm text-green-700">
+                            💰 Profit Margin: <strong>{((formData.price - formData.cost) / formData.price * 100).toFixed(1)}%</strong> (৳{formData.price - formData.cost} per unit)
+                        </p>
+                    </div>
+                )}
 
-                    {/* Render Variant Inputs Only If Present */}
-                    {variants.map((variant, index) => (
-                        <div key={index} className="flex flex-col lg:flex-row items-center mb-4">
-                            <div className="lg:w-1/3 pr-2">
-                                <label className="text-lg font-medium">Variant Name:</label>
-                                <input
-                                    className="p-2 rounded bg-gray-200 w-full"
-                                    type="text"
-                                    value={variant.name}
-                                    onChange={(e) => handleVariantNameChange(index, e.target.value)}
-                                    placeholder="Enter Variant Name"
-                                />
-                            </div>
-                            <div className="lg:w-1/3 px-2">
-                                <label className="text-lg font-medium">Variant Quantity:</label>
-                                <input
-                                    className="p-2 rounded bg-gray-200 w-full"
-                                    type="number"
-                                    value={variant.quantity}
-                                    onChange={(e) => handleVariantQuantityChange(index, e.target.value)}
-                                    placeholder="Enter Variant Quantity"
-                                />
-                            </div>
-                            <div className="lg:w-1/3 pl-2 flex items-center">
-                                <div>
-                                    <label className="text-lg font-medium">Variant Image:</label>
-                                    <div className="flex flex-col lg:flex-row items-center">
-                                        <input
-                                            className="p-2 rounded bg-gray-200 w-full"
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) => handleVariantImageChange(index, e.target.files[0])}
-                                        />
-                                        <button
-                                            type="button"
-                                            className="ml-4 px-4 py-2 bg-red-500 text-white rounded"
-                                            onClick={() => handleRemoveVariantInput(index)}
-                                        >
-                                            Delete
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
+                {/* Images */}
                 <div>
-                    <label className="text-lg font-medium">Product Images: ({images.length})</label><br />
-                    <input
-                        className="p-2 rounded bg-gray-200 w-full"
-                        name="images"
-                        type="file"
-                        multiple
-                        onChange={handleImageChange}
-                    />
-                    <button
-                        type="button"
-                        className="mt-2 px-4 py-2 bg-green-500 text-white rounded"
-                        onClick={() => setImages([])}
-                    >
-                        Clear Images
-                    </button>
-                    {images.length > 0 && (
-                        <div>
-                            {images.map((file, index) => (
-                                <div key={index}>File selected: {file.name}</div>
+                    <label className="text-lg font-medium block mb-2">
+                        Product Images <span className="text-red-500">*</span>
+                    </label>
+
+                    {imagePreviews.length > 0 && (
+                        <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mb-3">
+                            {imagePreviews.map((preview, idx) => (
+                                <div key={idx} className="relative group">
+                                    <img
+                                        src={preview}
+                                        alt={`Preview ${idx + 1}`}
+                                        className="w-full h-20 object-cover rounded border border-gray-300"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveImage(idx)}
+                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     )}
+
+                    {/* Upload Button with Dashed Border */}
+                    <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition">
+                        <FaImage className="text-gray-500" />
+                        <span className="text-sm text-gray-600">
+                            {imagePreviews.length > 0 ? 'Add More Images' : 'Upload Images'}
+                        </span>
+                        <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            multiple
+                            onChange={handleImageChange}
+                            required={images.length === 0}
+                        />
+                    </label>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Upload multiple images. First image will be the main image.
+                    </p>
                 </div>
+
+                {/* Description */}
                 <div>
-                    <label className="text-lg font-medium">Details:</label><br />
-                    <JoditEditor
-                        value={details}
-                        onBlur={newContent => setDetails(newContent)}
-                        tabIndex={1}
-                        onChange={newContent => { }}
+                    <label className="text-lg font-medium block mb-2">
+                        Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                        className="p-2 rounded bg-gray-200 w-full"
+                        rows={4}
+                        value={formData.description}
+                        onChange={(e) => handleChange('description', e.target.value)}
+                        required
+                        placeholder="Enter a brief description of the product"
                     />
                 </div>
-                <div className="flex justify-center">
-                    <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded flex items-center">
-                        Add Product
-                        {loading && (
-                            <div className="w-10 h-10 flex gap-1 items-center justify-center ml-2">
-                                <div className="w-2 h-2 animate-[bounce_.6s_linear_.2s_infinite] bg-sky-600 rounded-full"></div>
-                                <div className="w-2 h-2 animate-[bounce_.6s_linear_.3s_infinite] bg-sky-600 rounded-full"></div>
-                                <div className="w-2 h-2 animate-[bounce_.6s_linear_.4s_infinite] bg-sky-600 rounded-full"></div>
-                            </div>
+
+                {/* Details */}
+                <div>
+                    <label className="text-lg font-medium block mb-2">
+                        Detailed Information <span className="text-gray-500">(Optional)</span>
+                    </label>
+                    <JoditEditor
+                        value={formData.details}
+                        onBlur={(newContent) => handleChange('details', newContent)}
+                        tabIndex={1}
+                        onChange={() => { }}
+                    />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-between pt-4 border-t">
+                    <button
+                        type="button"
+                        onClick={() => setAdd(false)}
+                        className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition"
+                        disabled={loading}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition flex items-center gap-2"
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Adding...
+                            </>
+                        ) : (
+                            'Add Product'
                         )}
                     </button>
                 </div>
-                {message && <p className="text-center mt-2 text-red-600">{message}</p>}
+
+                {/* Message */}
+                {message && (
+                    <div className={`p-4 rounded ${message.includes('success') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {message}
+                    </div>
+                )}
             </form>
         </div>
     );

@@ -1,11 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-  Link,
-  Navigate,
-  useLocation,
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import useAxiosPublic from "../../Hooks/useAxiosPublic";
 import DOMPurify from "dompurify";
 import { IoShareSocialOutline } from "react-icons/io5";
@@ -17,47 +11,76 @@ import Wish from "../../Components/Icons/Wish";
 import SingleOrder from "../../Components/PopUp/SingleOrder";
 import { FaStar } from "react-icons/fa";
 import Slider from "react-slick";
+import VariantSelector from "../../Components/Product/VariantSelector";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
-const ProductPage = () => {
+const ProductDetails = () => {
   const { user } = useAuth();
   const axiosPublic = useAxiosPublic();
   const [databaseUser, refetch] = useDatabaseUser();
+  const { name: productName } = useParams();
+  const location = useLocation()?.pathname;
+  const navigate = useNavigate();
+  const sliderRef = useRef(null);
+
+  // Product data
   const [productData, setProductData] = useState(null);
+  const [variants, setVariants] = useState([]);
+  const [currentVariant, setCurrentVariant] = useState(null);
+  const [hasVariants, setHasVariants] = useState(false);
+
+  // UI state
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [orderedQuantities, setOrderedQuantities] = useState({});
-  const [selectedItemsForCart, setSelectedItemsForCart] = useState({});
+  const [orderQuantity, setOrderQuantity] = useState(0);
   const [details, setDetails] = useState(null);
-  const [selectedColor, setSelectedColor] = useState("");
+
+  // Reviews
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(null);
   const [reviewText, setReviewText] = useState("");
   const [reviews, setReviews] = useState([]);
   const [reviewImage, setReviewImage] = useState(null);
   const [averageRating, setAverageRating] = useState(0);
-  const [combinedImages, setCombinedImages] = useState([]);
-  const { name: productName } = useParams();
-  const location = useLocation()?.pathname;
-  const navigate = useNavigate();
-  const sliderRef = useRef(null);
 
+  // OLD variant system support (for backward compatibility)
+  const [selectedColor, setSelectedColor] = useState("");
+  const [orderedQuantities, setOrderedQuantities] = useState({});
+  const [selectedItemsForCart, setSelectedItemsForCart] = useState({});
+
+  // Fetch initial product
   useEffect(() => {
     axiosPublic.get(`/products/${productName}`).then((data) => {
       setProductData(data?.data);
     });
   }, [axiosPublic, productName]);
 
+  // Fetch variants if product has productGroupId
   useEffect(() => {
-    if (productData) {
-      axiosPublic.get(`/reviews/${productData._id}`).then((data) => {
-        const reviewsData = data?.data || [];
-        setReviews(reviewsData);
-        calculateAverageRating(reviewsData);
-      });
-    }
-  }, [productData]);
+    if (productData && productData.productGroupId) {
+      axiosPublic
+        .get(`/products/${productData._id}/with-variants`)
+        .then((response) => {
+          if (response?.data?.success) {
+            setVariants(response.data.variants || []);
+            setHasVariants(response.data.hasVariants);
 
+            const mainVariant = response.data.variants.find((v) => v.isMainProduct);
+            setCurrentVariant(mainVariant || response.data.variants[0]);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching variants:", error);
+          setCurrentVariant(productData);
+        });
+    } else {
+      // No product group - use product data
+      setCurrentVariant(productData);
+      setHasVariants(false);
+    }
+  }, [productData, axiosPublic]);
+
+  // OLD variant system support
   useEffect(() => {
     if (productData && productData.variants) {
       const variantKeys = Object.keys(productData.variants);
@@ -67,7 +90,25 @@ const ProductPage = () => {
         sliderRef.current?.slickGoTo(productData.images.length);
       }
     }
-  }, [productData]);
+  }, [productData, selectedColor]);
+
+  // Fetch reviews
+  useEffect(() => {
+    if (productData) {
+      axiosPublic.get(`/reviews/${productData._id}`).then((data) => {
+        const reviewsData = data?.data || [];
+        setReviews(reviewsData);
+        calculateAverageRating(reviewsData);
+      });
+    }
+  }, [productData, axiosPublic]);
+
+  // Sanitize details HTML
+  useEffect(() => {
+    const sanitizedHTML = DOMPurify.sanitize(currentVariant?.details || productData?.details || "");
+    const content = <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
+    setDetails(content);
+  }, [currentVariant, productData]);
 
   const calculateAverageRating = (reviews) => {
     if (reviews.length === 0) {
@@ -75,35 +116,25 @@ const ProductPage = () => {
       return;
     }
     const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-    const average = totalRating / reviews.length;
-    setAverageRating(average);
+    setAverageRating(totalRating / reviews.length);
   };
 
-  useEffect(() => {
-    const sanitizedHTML = DOMPurify.sanitize(productData?.details);
-    const content = <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
-    setDetails(content);
-  }, [productData]);
-
   const handleNextImage = () => {
-    setSelectedImageIndex(
-      (prevIndex) => (prevIndex + 1) % (productData?.images?.length || 1)
-    );
+    const images = currentVariant?.images || productData?.images || [];
+    setSelectedImageIndex((prevIndex) => (prevIndex + 1) % images.length);
   };
 
   const handlePrevImage = () => {
-    setSelectedImageIndex(
-      (prevIndex) =>
-        (prevIndex - 1 + (productData?.images?.length || 1)) % (productData?.images?.length || 1)
-    );
+    const images = currentVariant?.images || productData?.images || [];
+    setSelectedImageIndex((prevIndex) => (prevIndex - 1 + images.length) % images.length);
   };
 
   const handleShare = () => {
     if (navigator.share) {
       navigator
         .share({
-          title: productData?.name,
-          text: `Check out this product: ${productData?.name} from ${productData?.origin}`,
+          title: currentVariant?.name || productData?.name,
+          text: `Check out this product: ${currentVariant?.name || productData?.name}`,
           url: window.location.href,
         })
         .then(() => console.log("Share successful"))
@@ -119,41 +150,42 @@ const ProductPage = () => {
       return;
     }
 
-    const cartItems = Object.entries(selectedItemsForCart)
-      .filter(([_, quantity]) => quantity > 0)
-      .map(([variant, quantity]) => ({
-        email: databaseUser?.email,
-        productId: productData?._id,
-        quantity: quantity,
-        variant: variant,
-        code: "CODE" + (selectedImageIndex + 1),
-      }));
+    if (orderQuantity === 0) {
+      Swal.fire({
+        icon: "error",
+        title: "Please select a quantity",
+      });
+      return;
+    }
+
+    const cartItem = {
+      email: databaseUser?.email,
+      productId: currentVariant?._id || productData?._id,
+      quantity: orderQuantity,
+      variant: currentVariant?.name || productData?.name,
+      code: "CODE" + (selectedImageIndex + 1),
+    };
 
     try {
-      const responses = await Promise.all(
-        cartItems.map((item) => axiosPublic.post(`/cart`, item))
-      );
+      const response = await axiosPublic.post(`/cart`, cartItem);
 
-      const successfulAdditions = responses.filter(
-        (response) => response?.data?.insertedId || response?.data?.status
-      );
-
-      if (successfulAdditions.length > 0) {
+      if (response?.data?.insertedId || response?.data?.status) {
         Swal.fire({
           icon: "success",
-          title: "Products added to cart successfully",
+          title: "Product added to cart successfully",
         });
         refetch();
+        setOrderQuantity(0);
       } else {
         Swal.fire({
           icon: "error",
-          title: "Add a product first to cart",  
+          title: "Failed to add to cart",
         });
       }
     } catch (err) {
       Swal.fire({
         icon: "error",
-        title: "Error adding products to cart",
+        title: "Error adding product to cart",
       });
     }
   };
@@ -210,10 +242,7 @@ const ProductPage = () => {
     };
 
     try {
-      const response = await axiosPublic.post(
-        `/reviews/${productData?._id}`,
-        reviewData
-      );
+      const response = await axiosPublic.post(`/reviews/${productData?._id}`, reviewData);
       if (response?.data?.insertedId) {
         Swal.fire({
           icon: "success",
@@ -241,7 +270,7 @@ const ProductPage = () => {
   };
 
   const isVideo = (url) => {
-    if (typeof url !== 'string') return false;
+    if (typeof url !== "string") return false;
     return (
       url.endsWith(".mp4") ||
       url.endsWith(".webm") ||
@@ -252,6 +281,7 @@ const ProductPage = () => {
     );
   };
 
+  // OLD variant system handlers
   const handleQuantityChange = (variant, amount) => {
     setOrderedQuantities((prev) => {
       const newQuantity = (prev[variant] || 0) + amount;
@@ -266,17 +296,75 @@ const ProductPage = () => {
     });
   };
 
+  const handleOldCart = async () => {
+    if (!user) {
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
+    const cartItems = Object.entries(selectedItemsForCart)
+      .filter(([_, quantity]) => quantity > 0)
+      .map(([variant, quantity]) => ({
+        email: databaseUser?.email,
+        productId: productData?._id,
+        quantity: quantity,
+        variant: variant,
+        code: "CODE" + (selectedImageIndex + 1),
+      }));
+
+    try {
+      const responses = await Promise.all(cartItems.map((item) => axiosPublic.post(`/cart`, item)));
+
+      const successfulAdditions = responses.filter(
+        (response) => response?.data?.insertedId || response?.data?.status
+      );
+
+      if (successfulAdditions.length > 0) {
+        Swal.fire({
+          icon: "success",
+          title: "Products added to cart successfully",
+        });
+        refetch();
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Add a product first to cart",
+        });
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: "error",
+        title: "Error adding products to cart",
+      });
+    }
+  };
+
   if (!productData) {
     return (
       <div className="max-w-[95%] 2xl:max-w-7xl mx-auto pt-32 pb-10">
-        Loading...
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading product...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // Determine what to display (NEW variant system or OLD or single product)
+  const displayData = currentVariant || productData;
+  const displayImages = displayData?.images || [];
+  const displayPrice = displayData?.price || 0;
+  const displayCost = displayData?.cost || 0;
+  const displayDiscount = displayData?.discount || 0;
+  const displayQuantity = displayData?.quantity || 0;
+  const finalPrice = parseInt(displayPrice) - (parseInt(displayPrice) / 100) * displayDiscount;
+
+  // OLD variant system data
   const selectedVariant = productData.variants?.[selectedColor];
   const selectedVariantImage = selectedVariant?.image;
-  const availableQuantity = selectedVariant ? selectedVariant.quantity : productData.quantity;
+  const availableQuantity = selectedVariant ? selectedVariant.quantity : displayQuantity;
   const isOrderQuantityZero = orderedQuantities[selectedColor] === 0;
 
   const settings = {
@@ -295,9 +383,9 @@ const ProductPage = () => {
         <div className="flex-1 w-full mx-auto">
           <div className="relative rounded-lg overflow-hidden bg-white mb-4 lg:w-10/12 mx-auto">
             <div className="hidden lg:block">
-              {isVideo(selectedVariantImage || productData?.images[selectedImageIndex]) ? (
+              {isVideo(displayImages[selectedImageIndex]) ? (
                 <video
-                  src={selectedVariantImage || productData?.images[selectedImageIndex]}
+                  src={displayImages[selectedImageIndex]}
                   autoPlay
                   loop
                   muted
@@ -308,7 +396,7 @@ const ProductPage = () => {
                 </video>
               ) : (
                 <img
-                  src={selectedVariantImage || productData?.images[selectedImageIndex]}
+                  src={displayImages[selectedImageIndex]}
                   alt="Selected Product"
                   className="w-full min-h-[400px] h-full object-contain"
                 />
@@ -328,7 +416,7 @@ const ProductPage = () => {
             </div>
             <div className="lg:hidden">
               <Slider {...settings} ref={sliderRef}>
-                {productData?.images?.map((media, idx) =>
+                {displayImages?.map((media, idx) =>
                   isVideo(media) ? (
                     <video
                       key={idx}
@@ -348,197 +436,203 @@ const ProductPage = () => {
                     />
                   )
                 )}
-                {productData?.variants &&
-                  Object.entries(productData.variants).map(([_, { image }], idx) => (
-                    <img
-                      key={`variant-${idx}`}
-                      src={image}
-                      alt={`Variant ${idx}`}
-                      className="w-full h-[400px] object-contain"
-                    />
-                  ))}
               </Slider>
             </div>
           </div>
 
+          {/* Thumbnails */}
           <div className="flex justify-center items-center space-x-2 overflow-x-auto lg:space-x-2">
-  {productData?.images?.map((media, idx) =>
-    isVideo(media) ? (
-      <video
-        key={idx}
-        src={media}
-        className={`w-12 h-12 object-cover rounded-lg cursor-pointer border-2 ${
-          selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
-        }`}
-        onClick={() => {
-          setSelectedImageIndex(idx);
-          sliderRef.current?.slickGoTo(idx);
-        }}
-        muted
-      />
-    ) : (
-      <img
-        key={idx}
-        src={media}
-        alt={`Thumbnail ${idx}`}
-        className={`w-12 h-12 object-cover rounded-lg cursor-pointer border-2 ${
-          selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
-        }`}
-        onClick={() => {
-          setSelectedImageIndex(idx);
-          sliderRef.current?.slickGoTo(idx);
-        }}
-      />
-    )
-  )}
-  {productData?.variants &&
-    Object.entries(productData.variants).map(([color, { image }], idx) => (
-      <img
-        key={`variant-thumb-${idx}`}
-        src={image}
-        alt={color}
-        className={`w-12 h-12 object-cover rounded-lg cursor-pointer border-2 ${
-          selectedImageIndex === productData.images.length + idx
-            ? "border-blue-600"
-            : "border-gray-300"
-        }`}
-        onClick={() => {
-          const newIndex = productData.images.length + idx;
-          setSelectedImageIndex(newIndex);
-          sliderRef.current?.slickGoTo(newIndex);
-        }}
-      />
-    ))}
-</div>
+            {displayImages?.map((media, idx) =>
+              isVideo(media) ? (
+                <video
+                  key={idx}
+                  src={media}
+                  className={`w-12 h-12 object-cover rounded-lg cursor-pointer border-2 ${selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
+                    }`}
+                  onClick={() => {
+                    setSelectedImageIndex(idx);
+                    sliderRef.current?.slickGoTo(idx);
+                  }}
+                  muted
+                />
+              ) : (
+                <img
+                  key={idx}
+                  src={media}
+                  alt={`Thumbnail ${idx}`}
+                  className={`w-12 h-12 object-cover rounded-lg cursor-pointer border-2 ${selectedImageIndex === idx ? "border-blue-600" : "border-gray-300"
+                    }`}
+                  onClick={() => {
+                    setSelectedImageIndex(idx);
+                    sliderRef.current?.slickGoTo(idx);
+                  }}
+                />
+              )
+            )}
+          </div>
         </div>
 
         {/* Right - Product Details */}
         <div className="flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold mb-4">
-            {productData?.name}
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-4">{displayData?.name}</h1>
 
           <div className="flex items-center gap-2">
             <span className="text-2xl md:text-3xl text-red-600 font-bold">
               <span className="text-sm md:text-lg mr-0.5">৳</span>
-              {parseInt(productData?.price) -
-                (parseInt(productData?.price) / 100) * productData?.discount}
+              {finalPrice}
             </span>
-            <span className="text-sm md:text-lg line-through text-gray-500">
-              ৳ {productData?.price}
-            </span>
-            <span className="text-sm md:text-lg text-green-600">
-              -{productData?.discount}%
-            </span>
+            {displayDiscount > 0 && (
+              <>
+                <span className="text-sm md:text-lg line-through text-gray-500">
+                  ৳ {displayPrice}
+                </span>
+                <span className="text-sm md:text-lg text-green-600">-{displayDiscount}%</span>
+              </>
+            )}
           </div>
 
           {/* Available Quantity */}
           <div className="mt-2">
             <span className="font-medium text-lg">Available Quantity: </span>
-            <span className="text-lg">{availableQuantity}</span>
+            <span className="text-lg">{displayQuantity}</span>
           </div>
 
-          {/* Color Variant Selection using productData.variants */}
-          {productData?.variants && (
+          {/* NEW Product Group Variant Selector */}
+          {hasVariants && variants.length > 1 && (
+            <VariantSelector
+              variants={variants}
+              selectedVariant={currentVariant}
+              onSelectVariant={(variant) => {
+                setCurrentVariant(variant);
+                setSelectedImageIndex(0);
+                setOrderQuantity(0);
+              }}
+            />
+          )}
+
+          {/* OLD Variant System (for backward compatibility) */}
+          {productData?.variants && !hasVariants && (
             <div className="mt-4">
-              <h3 className="text-lg font-semibold">
-                Product Variant: {selectedColor}
-              </h3>
+              <h3 className="text-lg font-semibold">Product Variant: {selectedColor}</h3>
               <div className="flex space-x-2 mt-2">
-                {Object.entries(productData.variants).map(
-                  ([color, { image }], index) => (
-                    <img
-                      key={index}
-                      src={image}
-                      alt={color}
-                      className={`w-12 h-12 rounded-lg cursor-pointer border-2 ${
-                        selectedColor === color
-                          ? "border-orange-500"
-                          : "border-gray-200"
+                {Object.entries(productData.variants).map(([color, { image }], index) => (
+                  <img
+                    key={index}
+                    src={image}
+                    alt={color}
+                    className={`w-12 h-12 rounded-lg cursor-pointer border-2 ${selectedColor === color ? "border-orange-500" : "border-gray-200"
                       }`}
-                      onClick={() => {
-                        setSelectedColor(color);
-                        setSelectedImageIndex(productData.images.length + index);
-                        sliderRef.current?.slickGoTo(productData.images.length + index);
-                      }}
-                    />
-                  )
-                )}
+                    onClick={() => {
+                      setSelectedColor(color);
+                      setSelectedImageIndex(productData.images.length + index);
+                      sliderRef.current?.slickGoTo(productData.images.length + index);
+                    }}
+                  />
+                ))}
               </div>
             </div>
           )}
 
-          {/* Quantity Selector */}
-          <div className="mt-4">
-            <div className="flex items-center space-x-2">
-              <span className="font-medium text-lg">Order Quantity: </span>
-              <div className="flex items-center gap-2 mt-2">
-                <button
-                  onClick={() => handleQuantityChange(selectedColor, -1)}
-                  className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
-                  disabled={orderedQuantities[selectedColor] <= 0}
-                >
-                  -
-                </button>
-                <span className="text-lg">{orderedQuantities[selectedColor] || 0}</span>
-                <button
-                  onClick={() => handleQuantityChange(selectedColor, 1)}
-                  className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
-                  disabled={orderedQuantities[selectedColor] >= availableQuantity}
-                >
-                  +
-                </button>
+          {/* Quantity Selector - NEW system */}
+          {!productData?.variants && (
+            <div className="mt-4">
+              <div className="flex items-center space-x-2">
+                <span className="font-medium text-lg">Order Quantity: </span>
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={() => setOrderQuantity(Math.max(0, orderQuantity - 1))}
+                    className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
+                    disabled={orderQuantity <= 0}
+                  >
+                    -
+                  </button>
+                  <span className="text-lg">{orderQuantity}</span>
+                  <button
+                    onClick={() => setOrderQuantity(Math.min(displayQuantity, orderQuantity + 1))}
+                    className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
+                    disabled={orderQuantity >= displayQuantity}
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {availableQuantity < 1 ? (
-            <p className="text-xl font-semibold text-orange-500 mt-4">
-              Stock Out
-            </p>
+          {/* Quantity Selector - OLD system */}
+          {productData?.variants && !hasVariants && (
+            <div className="mt-4">
+              <div className="flex items-center space-x-2">
+                <span className="font-medium text-lg">Order Quantity: </span>
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={() => handleQuantityChange(selectedColor, -1)}
+                    className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
+                    disabled={orderedQuantities[selectedColor] <= 0}
+                  >
+                    -
+                  </button>
+                  <span className="text-lg">{orderedQuantities[selectedColor] || 0}</span>
+                  <button
+                    onClick={() => handleQuantityChange(selectedColor, 1)}
+                    className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
+                    disabled={orderedQuantities[selectedColor] >= availableQuantity}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {displayQuantity < 1 ? (
+            <p className="text-xl font-semibold text-orange-500 mt-4">Stock Out</p>
           ) : (
             <div className="mt-6 flex flex-col md:flex-row gap-4">
               <SingleOrder
-                productName={productData?.name}
-                adiInfo={{ order: orderedQuantities[selectedColor], selectedImageIndex }}
+                productName={displayData?.name}
+                adiInfo={{ order: orderQuantity, selectedImageIndex }}
               />
               <button
-                onClick={handleCart}
-                className={`px-6 py-3 bg-[#7dd67d] text-white rounded-lg transition ${
-                  isOrderQuantityZero ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-                disabled={isOrderQuantityZero}
+                onClick={productData?.variants && !hasVariants ? handleOldCart : handleCart}
+                className={`px-6 py-3 bg-[#7dd67d] text-white rounded-lg transition ${(productData?.variants && !hasVariants ? isOrderQuantityZero : orderQuantity === 0)
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                  }`}
+                disabled={productData?.variants && !hasVariants ? isOrderQuantityZero : orderQuantity === 0}
               >
                 Add to Cart
               </button>
             </div>
           )}
 
-          {/* Selected Items for Cart */}
-          <div className="mt-8">
-            <h2 className="text-lg font-medium mb-4">Selected Items for Cart</h2>
-            {Object.entries(selectedItemsForCart).map(
-              ([variant, quantity], index) =>
-                quantity > 0 && (
-                  <div key={index} className="flex items-center justify-between border-b pb-2 mb-2">
-                    <span className="text-lg">{variant}</span>
-                    <span className="text-lg">Quantity: {quantity}</span>
-                  </div>
-                )
-            )}
-          </div>
+          {/* Selected Items for Cart - OLD system */}
+          {productData?.variants && !hasVariants && (
+            <div className="mt-8">
+              <h2 className="text-lg font-medium mb-4">Selected Items for Cart</h2>
+              {Object.entries(selectedItemsForCart).map(
+                ([variant, quantity], index) =>
+                  quantity > 0 && (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between border-b pb-2 mb-2"
+                    >
+                      <span className="text-lg">{variant}</span>
+                      <span className="text-lg">Quantity: {quantity}</span>
+                    </div>
+                  )
+              )}
+            </div>
+          )}
 
           <div className="mt-6 text-2xl flex items-center space-x-5">
             <Wish id={productData?._id} />
-            <IoShareSocialOutline
-              onClick={handleShare}
-              className="cursor-pointer"
-            />
+            <IoShareSocialOutline onClick={handleShare} className="cursor-pointer" />
           </div>
 
           <div className="mt-6">
             <h2 className="text-lg font-medium mb-2">Product Description</h2>
-            <p className="text-gray-700">{productData?.description}</p>
+            <p className="text-gray-700">{displayData?.description}</p>
           </div>
         </div>
       </div>
@@ -548,6 +642,7 @@ const ProductPage = () => {
         {details}
       </div>
 
+      {/* Reviews Section */}
       <div className="mt-8">
         <h2 className="text-lg font-medium mb-4">Product Reviews</h2>
         <div className="mb-6">
@@ -555,10 +650,7 @@ const ProductPage = () => {
             <span className="font-medium text-lg">Average Rating:</span>
             <div className="flex items-center space-x-1">
               {[...Array(5)].map((_, i) => (
-                <FaStar
-                  key={i}
-                  color={i < averageRating ? "#ffc107" : "#e4e5e9"}
-                />
+                <FaStar key={i} color={i < averageRating ? "#ffc107" : "#e4e5e9"} />
               ))}
             </div>
             <span className="text-lg">{averageRating.toFixed(1)}</span>
@@ -568,19 +660,12 @@ const ProductPage = () => {
               <div key={index} className="border-b pb-4 mb-4">
                 <div className="flex items-center space-x-1">
                   {[...Array(5)].map((_, i) => (
-                    <FaStar
-                      key={i}
-                      color={i < review.rating ? "#ffc107" : "#e4e5e9"}
-                    />
+                    <FaStar key={i} color={i < review.rating ? "#ffc107" : "#e4e5e9"} />
                   ))}
                 </div>
                 <p className="mt-2 text-gray-700">{review.comment}</p>
                 {review.image && (
-                  <img
-                    src={review.image}
-                    alt="Review"
-                    className="mt-2 w-32 h-32 object-cover"
-                  />
+                  <img src={review.image} alt="Review" className="mt-2 w-32 h-32 object-cover" />
                 )}
               </div>
             ))
@@ -628,4 +713,4 @@ const ProductPage = () => {
   );
 };
 
-export default ProductPage;
+export default ProductDetails;

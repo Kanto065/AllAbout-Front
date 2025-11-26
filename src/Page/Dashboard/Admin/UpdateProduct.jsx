@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import axios from 'axios';
 import JoditEditor from 'jodit-react';
+import { FaImage } from 'react-icons/fa';
 import useAxiosPublic from '../../../Hooks/useAxiosPublic';
 import Swal from 'sweetalert2';
 import useCategories from '../../../Hooks/useCategories';
@@ -14,104 +15,104 @@ export default function UpdateProduct() {
     const [mainCategories] = useMainCategories();
     const [categories] = useCategories();
     const [subCategories] = useSubCategories();
-    const { pname } = useParams(); // Assuming you use URL params to get the product ID
-    const [name, setName] = useState('');
-    const [price, setPrice] = useState(0);
-    const [quantity, setQuantity] = useState(0);
-    const [mainCategory, setMainCategory] = useState('');
-    const [type, setType] = useState('');
-    const [subCategory, setSubCategory] = useState('');
-    const [description, setDescription] = useState('');
-    const [details, setDetails] = useState(``);
-    const [images, setImages] = useState([]);
-    const [discount, setDiscount] = useState(0);
-    const [message, setMessage] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [update, setUpdate] = useState(false);
-    const [id, setId] = useState('');
+    const { pname } = useParams();
     const navigate = useNavigate();
-    const [selectedCategory, setSelectedCategory] = useState([]);
-    const [selectedSubCategory, setSelectedSubCategory] = useState([]);
-    const [variantInputs, setVariantInputs] = useState([
-        { name: '', image: null, quantity: 0 }, // Initial input
-    ]);
 
-    const handleVariantNameChange = (index, value) => {
-        const updatedVariants = [...variantInputs];
-        updatedVariants[index].name = value;
-        setVariantInputs(updatedVariants);
-    };
+    // Form state
+    const [formData, setFormData] = useState({
+        name: '',
+        mainCategory: '',
+        category: '',
+        subCategory: '',
+        price: 0,
+        cost: 0,
+        quantity: 0,
+        discount: 0,
+        description: '',
+        details: ''
+    });
 
-    const handleVariantQuantityChange = (index, value) => {
-        const updatedVariants = [...variantInputs];
-        updatedVariants[index].quantity = value;
-        setVariantInputs(updatedVariants);
-    };
+    const [productId, setProductId] = useState('');
+    const [existingImages, setExistingImages] = useState([]);
+    const [newImages, setNewImages] = useState([]);
+    const [imagePreviews, setImagePreviews] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [fetchLoading, setFetchLoading] = useState(true);
 
-    const handleVariantImageChange = (index, file) => {
-        const updatedVariants = [...variantInputs];
-        updatedVariants[index].image = file;
-        setVariantInputs(updatedVariants);
-    };
+    // Filter categories based on selected main category
+    const filteredCategories = useMemo(() => {
+        return categories?.filter(cat => cat?.mainCategory === formData.mainCategory) || [];
+    }, [categories, formData.mainCategory]);
 
-    const handleAddVariantInput = () => {
-        setVariantInputs([...variantInputs, { name: '', image: null, quantity: 0 }]);
-    };
+    // Filter subcategories based on selected category
+    const filteredSubCategories = useMemo(() => {
+        return subCategories?.filter(sub => sub?.category === formData.category) || [];
+    }, [subCategories, formData.category]);
 
-    const handleRemoveVariantInput = (index) => {
-        const updatedVariants = variantInputs.filter((_, i) => i !== index);
-        setVariantInputs(updatedVariants);
-    };
-
+    // Fetch product data
     useEffect(() => {
-        setSelectedCategory(
-            categories?.filter(item => item?.mainCategory === mainCategory)
-        );
-    }, [categories, mainCategory]);
-
-    useEffect(() => {
-        setSelectedSubCategory(
-            subCategories?.filter(item => item?.category === type)
-        );
-    }, [subCategories, type]);
-
-    useEffect(() => {
-        // Fetch the existing product data when the component mounts
         const fetchProductData = async () => {
             try {
+                setFetchLoading(true);
                 const response = await axiosPublic.get(`/products/${pname}`);
                 const product = response.data;
 
-                setName(product?.name || "");
-                setPrice(product?.price || 0);
-                setQuantity(product?.quantity || 0);
-                setMainCategory(product?.mainCategory || "");
-                setType(product?.category || "");
-                setSubCategory(product?.subCategory || "");
-                setDescription(product?.description || "");
-                setVariantInputs(product?.variants ? Object.entries(product.variants).map(([name, { image, quantity }]) => ({ name, image, quantity })) : []);
-                setDetails(product?.details || "");
-                setImages(product?.images.map(img => ({ name: img, url: img })) || []);
-                setDiscount(product?.discount || 0);
-                setId(product?._id);
+                setFormData({
+                    name: product?.name || '',
+                    mainCategory: product?.mainCategory || '',
+                    category: product?.category || '',
+                    subCategory: product?.subCategory || '',
+                    price: product?.price || 0,
+                    cost: product?.cost || 0,
+                    quantity: product?.quantity || 0,
+                    discount: product?.discount || 0,
+                    description: product?.description || '',
+                    details: product?.details || ''
+                });
+
+                setProductId(product?._id);
+                setExistingImages(product?.images || []);
             } catch (error) {
-                setMessage('Failed to fetch product data');
+                console.error('Failed to fetch product:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to load product data'
+                });
+            } finally {
+                setFetchLoading(false);
             }
         };
 
         fetchProductData();
-        setUpdate(false);
-    }, [pname, axiosPublic, update]);
+    }, [pname, axiosPublic]);
 
-    const handleImageChange = (event) => {
-        const files = Array.from(event.target.files);
-        setImages(prevImages => [...prevImages, ...files]);
+    const handleChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleNewImageChange = (e) => {
+        const files = Array.from(e.target.files);
+        setNewImages(prev => [...prev, ...files]);
+
+        // Create previews
+        const previews = files.map(file => URL.createObjectURL(file));
+        setImagePreviews(prev => [...prev, ...previews]);
+    };
+
+    const handleRemoveExistingImage = (index) => {
+        setExistingImages(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleRemoveNewImage = (index) => {
+        setNewImages(prev => prev.filter((_, i) => i !== index));
+        setImagePreviews(prev => prev.filter((_, i) => i !== index));
     };
 
     const uploadImage = async (file) => {
         const formData = new FormData();
         formData.append('file', file);
-    
+
         try {
             const response = await axios.post('https://server.allaboutcraftbd.shop/upload', formData, {
                 headers: {
@@ -120,338 +121,385 @@ export default function UpdateProduct() {
             });
             return `https://server.allaboutcraftbd.shop/uploads/${response.data.file.filename}`;
         } catch (error) {
-            // Log detailed error information
-            console.error('File upload failed:', error.response ? error.response.data : error.message);
-            throw new Error('File upload failed');
+            console.error('Image upload failed:', error);
+            throw new Error('Image upload failed');
         }
     };
-    
 
-    const handleFormSubmit = async (event) => {
-        event.preventDefault();
+    const handleSubmit = async (e) => {
+        e.preventDefault();
         setLoading(true);
-    
+
         try {
-            let uploadedImageURLs = [];
-    
-            // Upload images one by one
-            for (const image of images) {
-                if (image instanceof File) {
-                    const imageURL = await uploadImage(image);
-                    uploadedImageURLs.push(imageURL);
-                } else {
-                    // Keep existing image URLs
-                    uploadedImageURLs.push(image.url);
-                }
+            // Upload new images
+            const uploadedNewImages = [];
+            for (const image of newImages) {
+                const imageURL = await uploadImage(image);
+                uploadedNewImages.push(imageURL);
             }
-    
-            const uploadedVariantImages = await Promise.all(
-                variantInputs.map(async (variant) => {
-                    if (variant.image instanceof File) {
-                        // Upload new file
-                        return await uploadImage(variant.image);
-                    } else if (typeof variant.image === 'string') {
-                        // Keep existing URL
-                        return variant.image;
-                    }
-                    return null;
-                })
-            );
-    
-            const variants = variantInputs.reduce((acc, variant, index) => {
-                if (variant.name && uploadedVariantImages[index]) {
-                    acc[variant.name] = {
-                        image: uploadedVariantImages[index],
-                        quantity: variant.quantity
-                    };
-                }
-                return acc;
-            }, {});
-    
-            // Create updated product with uploaded file URLs
-            const updatedProduct = {
-                name,
-                price: parseInt(price),
-                quantity: parseInt(quantity),
-                mainCategory,
-                category: type,
-                subCategory,
-                description,
-                details,
-                variants,
-                images: uploadedImageURLs,
-                discount: parseFloat(discount),
-            };
-    
-            const response = await axiosPublic.patch(`/updateProduct/${id}`, updatedProduct);
-    
-            if (response?.data?.modifiedCount > 0) {
-                setUpdate(true);
-                navigate(`/products/${name}`);
+
+            // Combine existing and new images
+            const allImages = [...existingImages, ...uploadedNewImages];
+
+            if (allImages.length === 0) {
                 Swal.fire({
-                    position: "center",
-                    icon: "success",
-                    title: `Product Updated Successfully!😊😊`,
-                    showConfirmButton: false,
-                    timer: 1000
+                    icon: 'warning',
+                    title: 'No Images',
+                    text: 'Please add at least one image'
                 });
-            } else {
-                console.error('Response data did not contain expected fields:', response.data);
+                setLoading(false);
+                return;
+            }
+
+            // Create updated product
+            const updatedProduct = {
+                name: formData.name,
+                mainCategory: formData.mainCategory,
+                category: formData.category,
+                subCategory: formData.subCategory || '',
+                price: parseInt(formData.price),
+                cost: parseInt(formData.cost),
+                quantity: parseInt(formData.quantity),
+                discount: parseFloat(formData.discount),
+                description: formData.description,
+                details: formData.details || '',
+                images: allImages
+            };
+
+            const response = await axiosPublic.patch(`/updateProduct/${productId}`, updatedProduct);
+
+            if (response?.data?.modifiedCount > 0) {
                 Swal.fire({
-                    position: "center",
-                    icon: "error",
-                    title: `Product Update Failed!😢😢`,
+                    position: 'center',
+                    icon: 'success',
+                    title: 'Product Updated Successfully! 😊',
                     showConfirmButton: false,
                     timer: 1500
                 });
+                setTimeout(() => {
+                    navigate('/dashboard/admin/allproducts');
+                }, 1500);
+            } else {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'No Changes',
+                    text: 'No changes were made to the product'
+                });
             }
         } catch (error) {
-            if (error.response) {
-                // Server responded with a status other than 2xx
-                console.error('Server Error:', error.response.data);
-                setMessage(`Server Error: ${error.response.data.message || 'Unknown error'}`);
-            } else if (error.request) {
-                // No response was received
-                console.error('Network Error:', error.message);
-                setMessage('Network Error: Unable to connect to the server');
-            } else {
-                // Something else caused the error
-                console.error('Error:', error.message);
-                setMessage('An unexpected error occurred');
-            }
+            console.error('Error updating product:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Update Failed',
+                text: 'An error occurred while updating the product'
+            });
         } finally {
             setLoading(false);
         }
     };
- 
+
+    if (fetchLoading) {
+        return (
+            <div className="py-5 flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading product data...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="py-5 max-w-[95%] 2xl:max-w-7xl mx-auto">
+        <div className="py-5">
             <Helmet>
                 <title>All About Craft BD | Update Product</title>
             </Helmet>
-            <h2 className="text-center text-4xl font-bold mb-5">Update Product</h2>
 
-            <form className="space-y-4" onSubmit={handleFormSubmit}>
-                <div className="flex flex-col lg:flex-row">
-                    <div className="lg:w-1/2 pr-2">
-                        <label className="text-lg font-medium">Name:</label><br />
-                        <input
-                            className="p-2 rounded bg-gray-200 w-full"
-                            name="name"
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                            placeholder='Enter The Product Name'
-                        />
-                    </div>
+            <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-md max-w-5xl mx-auto">
+                <div>
+                    <h3 className="text-2xl font-bold mb-4">Update Product</h3>
+                    <p className="text-gray-600 mb-6">
+                        Update product information. For products with variants, edit them individually.
+                    </p>
+                </div>
 
-                    <div className="lg:w-1/2 pl-2">
-                        <label className="text-lg font-medium">Main Category:</label><br />
+                {/* Product Name */}
+                <div>
+                    <label className="text-lg font-medium block mb-2">
+                        Product Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        className="p-2 rounded bg-gray-200 w-full"
+                        value={formData.name}
+                        onChange={(e) => handleChange('name', e.target.value)}
+                        required
+                        placeholder="Enter product name"
+                    />
+                </div>
+
+                {/* Categories */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Main Category <span className="text-red-500">*</span>
+                        </label>
                         <select
                             className="p-2 rounded bg-gray-200 w-full"
-                            name="mainCategory"
-                            value={mainCategory}
-                            onChange={(e) => setMainCategory(e.target.value)}
+                            value={formData.mainCategory}
+                            onChange={(e) => {
+                                handleChange('mainCategory', e.target.value);
+                                handleChange('category', '');
+                                handleChange('subCategory', '');
+                            }}
                             required
-                            placeholder='Enter The Product Category'
                         >
                             <option value="">Select Main Category</option>
-                            {
-                                mainCategories?.map((category, idx) =>
-                                    <option key={idx} value={category?.name}>{category?.name}</option>
-                                )
-                            }
+                            {mainCategories?.map((category, idx) => (
+                                <option key={idx} value={category?.name}>
+                                    {category?.name}
+                                </option>
+                            ))}
                         </select>
                     </div>
-                </div>
-                <div className="flex flex-col lg:flex-row">
-                    <div className="lg:w-1/2 pr-2">
-                        <label className="text-lg font-medium">Category:</label><br />
+
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Category <span className="text-red-500">*</span>
+                        </label>
                         <select
                             className="p-2 rounded bg-gray-200 w-full"
-                            name="type"
-                            value={type}
-                            onChange={(e) => setType(e.target.value)}
+                            value={formData.category}
+                            onChange={(e) => {
+                                handleChange('category', e.target.value);
+                                handleChange('subCategory', '');
+                            }}
                             required
-                            placeholder='Enter The Product Category'
+                            disabled={!formData.mainCategory}
                         >
                             <option value="">Select Category</option>
-                            {
-                                selectedCategory?.map((category, idx) =>
-                                    <option key={idx} value={category?.name}>{category?.name}</option>
-                                )
-                            }
+                            {filteredCategories?.map((category, idx) => (
+                                <option key={idx} value={category?.name}>
+                                    {category?.name}
+                                </option>
+                            ))}
                         </select>
                     </div>
-                    <div className="lg:w-1/2 pl-2">
-                        <label className="text-lg font-medium">Sub Category:</label><br />
+
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Sub Category <span className="text-gray-500">(Optional)</span>
+                        </label>
                         <select
                             className="p-2 rounded bg-gray-200 w-full"
-                            name="subcategory"
-                            value={subCategory}
-                            onChange={(e) => setSubCategory(e.target.value)}
-                            placeholder='Enter The Product Category'
+                            value={formData.subCategory}
+                            onChange={(e) => handleChange('subCategory', e.target.value)}
+                            disabled={!formData.category}
                         >
                             <option value="">Select Sub Category</option>
-                            {
-                                selectedSubCategory?.map((category, idx) =>
-                                    <option key={idx} value={category?.name}>{category?.name}</option>
-                                )
-                            }
+                            {filteredSubCategories?.map((category, idx) => (
+                                <option key={idx} value={category?.name}>
+                                    {category?.name}
+                                </option>
+                            ))}
                         </select>
                     </div>
                 </div>
-                <div className="flex flex-col lg:flex-row">
-                    <div className="lg:w-1/3 pr-2">
-                        <label className="text-lg font-medium">Quantity:</label><br />
+
+                {/* Pricing */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Price (৳) <span className="text-red-500">*</span>
+                        </label>
                         <input
-                            className="p-2 rounded bg-gray-200 w-full"
-                            name="quantity"
                             type="number"
-                            value={quantity}
-                            onChange={(e) => setQuantity(e.target.value)}
+                            className="p-2 rounded bg-gray-200 w-full"
+                            value={formData.price}
+                            onChange={(e) => handleChange('price', e.target.value)}
                             required
+                            min="0"
                         />
                     </div>
-                    <div className="lg:w-1/3 px-2">
-                        <label className="text-lg font-medium">Price:</label><br />
+
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Cost (৳) <span className="text-red-500">*</span>
+                        </label>
                         <input
-                            className="p-2 rounded bg-gray-200 w-full"
-                            name="price"
                             type="number"
-                            value={price}
-                            onChange={(e) => setPrice(e.target.value)}
+                            className="p-2 rounded bg-gray-200 w-full"
+                            value={formData.cost}
+                            onChange={(e) => handleChange('cost', e.target.value)}
                             required
+                            min="0"
                         />
                     </div>
-                    <div className="lg:w-1/3 pl-2">
-                        <label className="text-lg font-medium">Discount (%):</label><br />
+
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Quantity <span className="text-red-500">*</span>
+                        </label>
                         <input
-                            className="p-2 rounded bg-gray-200 w-full"
-                            name="discount"
                             type="number"
-                            value={discount}
-                            onChange={(e) => setDiscount(e.target.value)}
+                            className="p-2 rounded bg-gray-200 w-full"
+                            value={formData.quantity}
+                            onChange={(e) => handleChange('quantity', e.target.value)}
                             required
+                            min="0"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Discount (%)
+                        </label>
+                        <input
+                            type="number"
+                            className="p-2 rounded bg-gray-200 w-full"
+                            value={formData.discount}
+                            onChange={(e) => handleChange('discount', e.target.value)}
+                            min="0"
+                            max="100"
                         />
                     </div>
                 </div>
-                <div className="">
-                    <label className="text-lg font-medium">Description:</label><br />
-                    <textarea
-                        className="p-2 rounded bg-gray-200 w-full"
-                        name="description"
-                        rows={3}
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        required
-                        placeholder='Enter The Product Description'
-                    />
-                </div>
 
-                <div className="py-5">
-                    {/* Add Variant Button */}
-                    <button
-                        type="button"
-                        className="mb-4 px-4 py-2 bg-green-500 text-white rounded"
-                        onClick={handleAddVariantInput}
-                    >
-                        {variantInputs.length === 0 ? 'Add Product Variant' : 'Add Another Product Variant'}
-                    </button>
+                {/* Profit Margin Display */}
+                {formData.price > 0 && formData.cost > 0 && (
+                    <div className="p-2 bg-green-50 border border-green-200 rounded">
+                        <p className="text-sm text-green-700">
+                            💰 Profit Margin: <strong>{((formData.price - formData.cost) / formData.price * 100).toFixed(1)}%</strong> (৳{formData.price - formData.cost} per unit)
+                        </p>
+                    </div>
+                )}
 
-                    {/* Render Variant Inputs Only If Present */}
-                    {variantInputs.map((variant, index) => (
-                        <div key={index} className="flex flex-col lg:flex-row items-center mb-4">
-                            <div className="lg:w-1/3 pr-2">
-                                <label className="text-lg font-medium">Variant Name:</label>
-                                <input
-                                    className="p-2 rounded bg-gray-200 w-full"
-                                    type="text"
-                                    value={variant.name}
-                                    onChange={(e) => handleVariantNameChange(index, e.target.value)}
-                                    placeholder="Enter Variant Name"
-                                />
-                            </div>
-                            <div className="lg:w-1/3 px-2">
-                                <label className="text-lg font-medium">Variant Quantity:</label>
-                                <input
-                                    className="p-2 rounded bg-gray-200 w-full"
-                                    type="number"
-                                    value={variant.quantity}
-                                    onChange={(e) => handleVariantQuantityChange(index, e.target.value)}
-                                    placeholder="Enter Variant Quantity"
-                                />
-                            </div>
-                            <div className="lg:w-1/3 pl-2 flex items-center">
-                                <div>
-                                    <label className="text-lg font-medium">Variant Image:</label>
-                                    <div className="flex flex-col lg:flex-row items-center">
-                                        <input
-                                            className="p-2 rounded bg-gray-200 w-full"
-                                            type="file"
-                                            onChange={(e) => handleVariantImageChange(index, e.target.files[0])}
-                                        />
-                                        <button
-                                            type="button"
-                                            className="ml-4 px-4 py-2 bg-red-500 text-white rounded"
-                                            onClick={() => handleRemoveVariantInput(index)}
-                                        >
-                                            Delete
-                                        </button>
-                                    </div>
+                {/* Existing Images */}
+                {existingImages.length > 0 && (
+                    <div>
+                        <label className="text-lg font-medium block mb-2">
+                            Current Images ({existingImages.length})
+                        </label>
+                        <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+                            {existingImages.map((image, idx) => (
+                                <div key={idx} className="relative group">
+                                    <img
+                                        src={image}
+                                        alt={`Existing ${idx + 1}`}
+                                        className="w-full h-20 object-cover rounded border border-gray-300"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveExistingImage(idx)}
+                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                                    >
+                                        ×
+                                    </button>
                                 </div>
-                            </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
+                    </div>
+                )}
 
+                {/* New Images */}
                 <div>
-                    <label className="text-lg font-medium">Product Images: ({images?.length})</label><br />
-                    <input
-                        className="p-2 rounded bg-gray-200 w-full"
-                        name="images"
-                        type="file"
-                        multiple
-                        onChange={handleImageChange}
-                    />
-                    <button
-                        type="button"
-                        className="mt-2 px-4 py-2 bg-green-500 text-white rounded"
-                        onClick={() => setImages([])}
-                    >
-                        Clear Images
-                    </button>
-                    {images?.length > 0 && (
-                        <div>
-                            {images.map((file, index) => (
-                                <div key={index}>File selected: {file.name}</div>
+                    <label className="text-lg font-medium block mb-2">
+                        Add New Images
+                    </label>
+
+                    {imagePreviews.length > 0 && (
+                        <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mb-3">
+                            {imagePreviews.map((preview, idx) => (
+                                <div key={idx} className="relative group">
+                                    <img
+                                        src={preview}
+                                        alt={`New ${idx + 1}`}
+                                        className="w-full h-20 object-cover rounded border border-gray-300"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveNewImage(idx)}
+                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     )}
+
+                    {/* Upload Button with Dashed Border */}
+                    <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition">
+                        <FaImage className="text-gray-500" />
+                        <span className="text-sm text-gray-600">
+                            {imagePreviews.length > 0 ? 'Add More Images' : 'Upload Images'}
+                        </span>
+                        <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            multiple
+                            onChange={handleNewImageChange}
+                        />
+                    </label>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Upload additional images or replace existing ones.
+                    </p>
                 </div>
+
+                {/* Description */}
                 <div>
-                    <label className="text-lg font-medium">Details:</label><br />
-                    <JoditEditor
-                        value={details}
-                        onBlur={newContent => setDetails(newContent)}
-                        tabIndex={1}
-                        onChange={newContent => { }}
+                    <label className="text-lg font-medium block mb-2">
+                        Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                        className="p-2 rounded bg-gray-200 w-full"
+                        rows={4}
+                        value={formData.description}
+                        onChange={(e) => handleChange('description', e.target.value)}
+                        required
+                        placeholder="Enter a brief description of the product"
                     />
                 </div>
-                <div className="flex justify-center">
-                    <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded flex items-center">
-                        Update Product
-                        {loading && (
-                            <div className="w-10 h-10 flex gap-1 items-center justify-center ml-2">
-                                <div className="w-2 h-2 animate-[bounce_.6s_linear_.2s_infinite] bg-sky-600 rounded-full"></div>
-                                <div className="w-2 h-2 animate-[bounce_.6s_linear_.3s_infinite] bg-sky-600 rounded-full"></div>
-                                <div className="w-2 h-2 animate-[bounce_.6s_linear_.4s_infinite] bg-sky-600 rounded-full"></div>
-                            </div>
+
+                {/* Details */}
+                <div>
+                    <label className="text-lg font-medium block mb-2">
+                        Detailed Information <span className="text-gray-500">(Optional)</span>
+                    </label>
+                    <JoditEditor
+                        value={formData.details}
+                        onBlur={(newContent) => handleChange('details', newContent)}
+                        tabIndex={1}
+                        onChange={() => { }}
+                    />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-between pt-4 border-t">
+                    <button
+                        type="button"
+                        onClick={() => navigate('/dashboard/admin/allproducts')}
+                        className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition"
+                        disabled={loading}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition flex items-center gap-2"
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Updating...
+                            </>
+                        ) : (
+                            'Update Product'
                         )}
                     </button>
                 </div>
-                {message && <p className="text-center mt-2 text-red-600">{message}</p>}
             </form>
         </div>
     );
