@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { CgMenuGridO, CgProfile } from "react-icons/cg";
 import { FaCartArrowDown, FaHome, FaList } from "react-icons/fa";
 import {
@@ -46,8 +46,6 @@ const Navbar = () => {
   const [subCategories] = useSubCategories();
   const [mainCategoryName, setMainCategoryName] = useState("");
   const [categoryName, setCategoryName] = useState("");
-  const [SearchCategory, setSearchCategory] = useState([]);
-  const [SearchSubCategory, setSearchSubCategory] = useState([]);
   const [openMainCategory, setOpenMainCategory] = useState(null);
   const [openCategory, setOpenCategory] = useState(null);
   const [cart] = useCart();
@@ -56,21 +54,28 @@ const Navbar = () => {
   const [sold] = useSold();
   const pathname = useLocation().pathname;
 
+  // Debounced search to avoid excessive API calls
   useEffect(() => {
-    axiosPublic(`/search/${searchText}`).then((res) =>
-      setSearchProducts(res?.data)
-    );
+    if (!searchText) {
+      setSearchProducts([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      axiosPublic(`/search/${searchText}`).then((res) =>
+        setSearchProducts(res?.data)
+      );
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
   }, [searchText, axiosPublic]);
-  useEffect(() => {
-    setSearchCategory(
-      categories?.filter((item) => item?.mainCategory == mainCategoryName)
-    );
+  // Use useMemo to avoid recalculating filtered arrays on every render
+  const SearchCategory = useMemo(() => {
+    return categories?.filter((item) => item?.mainCategory === mainCategoryName) || [];
   }, [categories, mainCategoryName]);
 
-  useEffect(() => {
-    setSearchSubCategory(
-      subCategories?.filter((item) => item?.category == categoryName)
-    );
+  const SearchSubCategory = useMemo(() => {
+    return subCategories?.filter((item) => item?.category === categoryName) || [];
   }, [subCategories, categoryName]);
 
   useEffect(() => {
@@ -80,14 +85,13 @@ const Navbar = () => {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [prevScrollPos]);
+  }, []);
 
   return (
     <nav>
       <div
-        className={`min-h-screen w-full fixed top-0 bg-[#0000006a] px-10 z-[210] ${
-          search ? "block" : "hidden"
-        } duration-500`}
+        className={`min-h-screen w-full fixed top-0 bg-[#0000006a] px-10 z-[210] ${search ? "block" : "hidden"
+          } duration-500`}
         onClick={() => setSearch(false)}
       >
         <div
@@ -127,7 +131,7 @@ const Navbar = () => {
                     alt={product?.name}
                     className="w-10 h-10 object-cover rounded-md mr-2" // Adjust as necessary
                   />
-                  
+
                   {/* Product Name */}
                   <span>{product?.name}</span>
                 </Link>
@@ -138,11 +142,10 @@ const Navbar = () => {
       <div className={`fixed top-0 w-full z-[200]`}>
         {/* top nav */}
         <ul
-          className={`w-full bg-white text-center font-bold text-[13.5px] md:text-xl lg:text-2xl ${
-            prevScrollPos > 100
-              ? "max-h-0"
-              : "max-h-[500px] border-b-4 border-[#B1ECD7]"
-          } duration-500`}
+          className={`w-full bg-white text-center font-bold text-[13.5px] md:text-xl lg:text-2xl ${prevScrollPos > 100
+            ? "max-h-0"
+            : "max-h-[500px] border-b-4 border-[#B1ECD7]"
+            } duration-500`}
         >
           <Swiper
             slidesPerView={3} // Default number of slides to show
@@ -152,13 +155,12 @@ const Navbar = () => {
             {mainCategories?.map((category, idx) => (
               <SwiperSlide
                 key={category?._id}
-                className={`flex-shrink-0 w-1/2 md:w-1/3 lg:w-1/4 py-2 ${
-                  idx % 3 === 0
-                    ? "bg-[#C4ACC2]"
-                    : idx % 3 === 1
+                className={`flex-shrink-0 w-1/2 md:w-1/3 lg:w-1/4 py-2 ${idx % 3 === 0
+                  ? "bg-[#C4ACC2]"
+                  : idx % 3 === 1
                     ? "bg-[#c5eac5]"
                     : "bg-[#B1B4DD]"
-                }`}
+                  }`}
               >
                 <Link
                   onClick={() => setMenu(false)}
@@ -228,35 +230,35 @@ const Navbar = () => {
               </li>
               <li className="flex lg:hidden items-center justify-between text-2xl md:text-3xl space-x-2">
                 {databaseUser?.role === "admin" ?
-                (
-                  <Link to={"/dashboard/Admin/orders"}>
-                    <div className="relative pb-0.5">
-                      <FaList className="" />
-                      <sup className="absolute text-xs font-bold -right-1.5 -top-2 text-[#e846db]">
-                        {purchased?.length || 0}
-                      </sup>
-                    </div>
-                  </Link>
-                )
-                :
-                (
-                  <>
-                    <Link to={"/dashboard/wishlist"}>
-                      <div className="relative">
-                        <MdFavoriteBorder className="text-2xl mx-auto" />
-                        <sup className="absolute text-xs font-bold left-2/3 -top-1.5 text-[#e846db]">
-                          {wish?.length || 0}
+                  (
+                    <Link to={"/dashboard/Admin/orders"}>
+                      <div className="relative pb-0.5">
+                        <FaList className="" />
+                        <sup className="absolute text-xs font-bold -right-1.5 -top-2 text-[#e846db]">
+                          {purchased?.length || 0}
                         </sup>
                       </div>
                     </Link>
-                    <Link to={"/dashboard/cart"} className="relative">
-                      <MdOutlineShoppingBag />
-                      <sup className="absolute text-xs font-bold right-0 -top-1 text-[#e846db]">
-                        {cart?.length || 0}
-                      </sup>
-                    </Link>
-                  </>
-                )}
+                  )
+                  :
+                  (
+                    <>
+                      <Link to={"/dashboard/wishlist"}>
+                        <div className="relative">
+                          <MdFavoriteBorder className="text-2xl mx-auto" />
+                          <sup className="absolute text-xs font-bold left-2/3 -top-1.5 text-[#e846db]">
+                            {wish?.length || 0}
+                          </sup>
+                        </div>
+                      </Link>
+                      <Link to={"/dashboard/cart"} className="relative">
+                        <MdOutlineShoppingBag />
+                        <sup className="absolute text-xs font-bold right-0 -top-1 text-[#e846db]">
+                          {cart?.length || 0}
+                        </sup>
+                      </Link>
+                    </>
+                  )}
               </li>
             </ul>
           </div>
@@ -269,9 +271,8 @@ const Navbar = () => {
       </div>
       <div
         onClick={() => setMenu(!menu)}
-        className={`fixed top-0 ${
-          menu ? "left-0" : "-left-[3000px]"
-        } transition-all duration-1000 bg-[#0000005d] w-full h-full text-white z-[300]`}
+        className={`fixed top-0 ${menu ? "left-0" : "-left-[3000px]"
+          } transition-all duration-1000 bg-[#0000005d] w-full h-full text-white z-[300]`}
       >
         <div
           onClick={(e_) => e_.stopPropagation()}
@@ -297,11 +298,10 @@ const Navbar = () => {
                     {mCategory?.name}
                   </Link>
                   <div
-                    className={`${
-                      categories?.find(
-                        (item) => item?.mainCategory == mCategory?.name
-                      ) || "hidden"
-                    }`}
+                    className={`${categories?.find(
+                      (item) => item?.mainCategory == mCategory?.name
+                    ) || "hidden"
+                      }`}
                   >
                     {openMainCategory == mCategory?._id ? (
                       <IoMdRemove
@@ -332,11 +332,10 @@ const Navbar = () => {
                             {cCategory?.name}
                           </Link>
                           <div
-                            className={`${
-                              subCategories?.find(
-                                (item) => item?.category == cCategory?.name
-                              ) || "hidden"
-                            }`}
+                            className={`${subCategories?.find(
+                              (item) => item?.category == cCategory?.name
+                            ) || "hidden"
+                              }`}
                           >
                             {openCategory == cCategory?._id ? (
                               <IoMdRemove
@@ -396,9 +395,8 @@ const Navbar = () => {
               {databaseUser?.role === "admin" ? (
                 <Link
                   to={"/dashboard/Admin/sold"}
-                  className={`${
-                    pathname === "/dashboard/Admin/sold" && "text-slate-200"
-                  }`}
+                  className={`${pathname === "/dashboard/Admin/sold" && "text-slate-200"
+                    }`}
                 >
                   <div className="relative pb-0.5">
                     <MdFormatListNumberedRtl className="text-xl mx-auto" />
@@ -411,9 +409,8 @@ const Navbar = () => {
               ) : (
                 <Link
                   to={"/dashboard/purchase"}
-                  className={`${
-                    pathname === "/dashboard/purchase" && "text-slate-200"
-                  }`}
+                  className={`${pathname === "/dashboard/purchase" && "text-slate-200"
+                    }`}
                 >
                   <div className="relative">
                     <FaCartArrowDown className="text-2xl mx-auto" />
@@ -429,9 +426,8 @@ const Navbar = () => {
               {databaseUser?.role === "admin" ? (
                 <Link
                   to={"/dashboard/Admin/orders"}
-                  className={`${
-                    pathname === "/dashboard/Admin/orders" && "text-slate-200"
-                  }`}
+                  className={`${pathname === "/dashboard/Admin/orders" && "text-slate-200"
+                    }`}
                 >
                   <div className="relative pb-0.5">
                     <FaList className="text-xl mx-auto" />
@@ -444,9 +440,8 @@ const Navbar = () => {
               ) : (
                 <Link
                   to={"/dashboard/cart"}
-                  className={`${
-                    pathname === "/dashboard/cart" && "text-slate-200"
-                  }`}
+                  className={`${pathname === "/dashboard/cart" && "text-slate-200"
+                    }`}
                 >
                   <div className="relative">
                     <MdOutlineShoppingBag className="text-2xl mx-auto" />
