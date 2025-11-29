@@ -108,6 +108,14 @@ const ProductDetails = () => {
     }
   }, [variants, hasVariants, currentVariant]);
 
+  // Set default quantity to 1 for single-variant products
+  useEffect(() => {
+    if (hasVariants && variants.length === 1 && currentVariant) {
+      setVariantQuantities({ [currentVariant._id]: 1 });
+    }
+  }, [hasVariants, variants.length, currentVariant]);
+
+
   // OLD variant system support
   useEffect(() => {
     if (productData && productData.variants) {
@@ -618,6 +626,49 @@ const ProductDetails = () => {
               variantQuantities={variantQuantities}
               onQuantityChange={handleVariantQuantityChange}
             />
+          )}
+
+          {/* Quantity Selector for Single-Variant Product Groups */}
+          {hasVariants && variants.length === 1 && (
+            <div className="mt-4">
+              <div className="flex items-center space-x-2">
+                <span className="font-medium text-lg">Order Quantity: </span>
+                <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
+                  <button
+                    onClick={() => {
+                      const currentQty = variantQuantities[currentVariant._id] || 0;
+                      handleVariantQuantityChange(currentVariant._id, Math.max(0, currentQty - 1));
+                    }}
+                    disabled={(variantQuantities[currentVariant._id] || 0) <= 0}
+                    className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition font-bold text-xl"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min="0"
+                    max={currentVariant.quantity}
+                    value={variantQuantities[currentVariant._id] || 0}
+                    onChange={(e) => {
+                      const numValue = parseInt(e.target.value) || 0;
+                      const newQty = Math.max(0, Math.min(currentVariant.quantity, numValue));
+                      handleVariantQuantityChange(currentVariant._id, newQty);
+                    }}
+                    className="w-16 h-10 text-center font-semibold text-base text-gray-900 bg-white border-x border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => {
+                      const currentQty = variantQuantities[currentVariant._id] || 0;
+                      handleVariantQuantityChange(currentVariant._id, Math.min(currentVariant.quantity, currentQty + 1));
+                    }}
+                    disabled={(variantQuantities[currentVariant._id] || 0) >= currentVariant.quantity}
+                    className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition font-bold text-xl"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* OLD Variant System (for backward compatibility) */}

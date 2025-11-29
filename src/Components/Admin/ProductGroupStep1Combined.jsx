@@ -101,92 +101,102 @@ export default function ProductGroupStep1Combined({
 
         if (result.isConfirmed) {
             // Delete product completely
-            const newVariants = variants.filter((_, i) => i !== index);
-            setVariants(newVariants);
-            if (activeTab >= newVariants.length) {
-                setActiveTab(newVariants.length - 1);
-            }
-            Swal.fire({
-                icon: 'success',
-                title: 'Deleted!',
-                text: 'Variant has been deleted.',
-                timer: 1500,
-                showConfirmButton: false
-            });
-        } else if (result.isDenied) {
-            // Remove from group - create standalone product
             const variant = variants[index];
 
-            // TODO: Call API to convert variant to standalone product
-            // For now, just remove from UI
-            const newVariants = variants.filter((_, i) => i !== index);
-            setVariants(newVariants);
-            if (activeTab >= newVariants.length) {
-                setActiveTab(newVariants.length - 1);
-            }
+            // Only call API if in edit mode and variant has an ID
+            if (isEditMode && variant._id) {
+                try {
+                    const response = await axiosPublic.delete(`/products/${variant._id}`);
 
-            Swal.fire({
-                icon: 'success',
-                title: 'Removed from Group!',
-                text: 'Variant converted to standalone product.',
-                timer: 1500,
-                showConfirmButton: false
-            });
-        }
-    };
-
-    const handleMakeMain = async (index) => {
-        const variant = variants[index];
-
-        // If editing mode and variant has an ID, call API
-        if (isEditMode && variant._id) {
-            try {
-                const result = await Swal.fire({
-                    title: 'Make Main Product?',
-                    text: `Set "${variant.name || `Variant ${index + 1}`}" as the main product?`,
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Yes, Make Main',
-                    confirmButtonColor: '#eab308',
-                    cancelButtonText: 'Cancel'
-                });
-
-                if (result.isConfirmed) {
-                    // Call API to change main product
-                    const response = await axiosPublic.post(`/products/variant/${variant._id}/make-main`);
-
-                    if (response.data.success) {
-                        // Update local state
-                        const newVariants = variants.map((v, i) => ({
-                            ...v,
-                            isMainProduct: i === index
-                        }));
+                    if (response.data.deletedCount > 0) {
+                        // Remove from UI after successful deletion
+                        const newVariants = variants.filter((_, i) => i !== index);
                         setVariants(newVariants);
+                        if (activeTab >= newVariants.length) {
+                            setActiveTab(newVariants.length - 1);
+                        }
 
                         Swal.fire({
                             icon: 'success',
-                            title: 'Success!',
-                            text: 'Main product changed successfully.',
+                            title: 'Deleted!',
+                            text: 'Variant has been deleted permanently.',
                             timer: 1500,
                             showConfirmButton: false
                         });
                     }
+                } catch (error) {
+                    console.error('Error deleting variant:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to delete variant. Please try again.'
+                    });
                 }
-            } catch (error) {
-                console.error('Error changing main product:', error);
+            } else {
+                // In create mode, just remove from UI (no backend product yet)
+                const newVariants = variants.filter((_, i) => i !== index);
+                setVariants(newVariants);
+                if (activeTab >= newVariants.length) {
+                    setActiveTab(newVariants.length - 1);
+                }
+
                 Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Failed to change main product. Please try again.'
+                    icon: 'success',
+                    title: 'Deleted!',
+                    text: 'Variant has been removed.',
+                    timer: 1500,
+                    showConfirmButton: false
                 });
             }
-        } else {
-            // In create mode, just update local state
-            const newVariants = variants.map((v, i) => ({
-                ...v,
-                isMainProduct: i === index
-            }));
-            setVariants(newVariants);
+        } else if (result.isDenied) {
+            // Remove from group - convert to standalone product
+            const variant = variants[index];
+
+            // Only call API if in edit mode and variant has an ID
+            if (isEditMode && variant._id) {
+                try {
+                    const response = await axiosPublic.post(`/products/variant/${variant._id}/convert-to-standalone`);
+
+                    if (response.data.success) {
+                        // Remove from UI after successful conversion
+                        const newVariants = variants.filter((_, i) => i !== index);
+                        setVariants(newVariants);
+                        if (activeTab >= newVariants.length) {
+                            setActiveTab(newVariants.length - 1);
+                        }
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Removed from Group!',
+                            text: 'Variant converted to standalone product successfully.',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error converting variant to standalone:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to convert variant to standalone product. Please try again.'
+                    });
+                }
+            } else {
+                // In create mode, just remove from UI (no backend product yet)
+                const newVariants = variants.filter((_, i) => i !== index);
+                setVariants(newVariants);
+                if (activeTab >= newVariants.length) {
+                    setActiveTab(newVariants.length - 1);
+                }
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Removed from Group!',
+                    text: 'Variant removed from group.',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            }
         }
     };
 
@@ -442,14 +452,13 @@ export default function ProductGroupStep1Combined({
                             <VariantCard
                                 variant={variant}
                                 index={index}
-                                isMain={variant.isMainProduct || index === 0}
+                                isMain={index === 0}
                                 mainCategory={sharedInfo.mainCategory}
                                 category={sharedInfo.category}
                                 excludeProductIds={variants.filter(v => v.existingProductId).map(v => v.existingProductId)}
                                 onChange={handleVariantChange}
                                 onRemove={handleRemoveVariant}
                                 canRemove={variants.length > 1}
-                                onMakeMain={handleMakeMain}
                             />
                         </div>
                     ))}

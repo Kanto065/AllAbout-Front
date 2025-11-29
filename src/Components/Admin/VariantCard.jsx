@@ -3,7 +3,7 @@ import { IoMdClose } from 'react-icons/io';
 import { FaImage, FaTrash } from 'react-icons/fa';
 import ProductSearchDropdown from './ProductSearchDropdown';
 
-export default function VariantCard({ variant, index, isMain, mainCategory, category, excludeProductIds = [], onChange, onRemove, canRemove, onMakeMain }) {
+export default function VariantCard({ variant, index, isMain, mainCategory, category, excludeProductIds = [], onChange, onRemove, canRemove }) {
     const [imagePreviewsLocal, setImagePreviewsLocal] = useState([]);
 
     const handleFieldChange = (field, value) => {
@@ -82,15 +82,6 @@ export default function VariantCard({ variant, index, isMain, mainCategory, cate
                         </span>
                     )}
                 </h4>
-                {!isMain && onMakeMain && (
-                    <button
-                        type="button"
-                        onClick={() => onMakeMain(index)}
-                        className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition text-sm font-medium"
-                    >
-                        ⭐ Make Main Product
-                    </button>
-                )}
             </div>
 
             {/* Variant Source Toggle - Only show if categories are provided */}

@@ -44,13 +44,13 @@ export default function CartItem({ product, reload, message, isGrouped }) {
     try {
       const response = await axiosPublic.patch(`/cart`, cart);
       if (response?.data?.modifiedCount > 0) {
-        Swal.fire({
-          position: "top-right",
-          icon: "success",
-          title: "Cart updated",
-          showConfirmButton: false,
-          timer: 1000,
-        });
+        // Swal.fire({
+        //   position: "top-right",
+        //   icon: "success",
+        //   title: "Cart updated",
+        //   showConfirmButton: false,
+        //   timer: 1000,
+        // });
         setQuantity(newQuantity);
         reload();
       }
