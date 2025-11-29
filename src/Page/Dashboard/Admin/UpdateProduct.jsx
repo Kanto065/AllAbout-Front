@@ -219,26 +219,7 @@ export default function UpdateProduct() {
 
                 // Check if product is part of a group
                 if (product.productGroupId) {
-                    // If it's a variant (not main product), redirect to main product
-                    if (!product.isMainProduct) {
-                        const groupResponse = await axiosPublic.get(`/products/group/${product.productGroupId}`);
-                        const mainProduct = groupResponse.data.mainProduct;
-
-                        Swal.fire({
-                            icon: 'info',
-                            title: 'Redirecting',
-                            text: 'This is a variant. Redirecting to main product...',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-
-                        setTimeout(() => {
-                            navigate(`/dashboard/update-product/${mainProduct.name}`);
-                        }, 2000);
-                        return;
-                    }
-
-                    // It's a main product in a group - fetch full group data
+                    // Fetch full group data - no need to redirect, just load the group editor
                     const groupResponse = await axiosPublic.get(`/products/group/${product.productGroupId}`);
                     setIsProductGroup(true);
                     setGroupData(groupResponse.data);

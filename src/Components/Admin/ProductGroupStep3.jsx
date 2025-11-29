@@ -44,12 +44,17 @@ export default function ProductGroupStep3({
             // Upload all images for all variants
             const variantsWithUploadedImages = await Promise.all(
                 variants.map(async (variant) => {
-                    const uploadedImages = [];
+                    let finalImages = [];
 
-                    if (variant.imageFiles && variant.imageFiles.length > 0) {
+                    // Handle existing product images
+                    if (variant.isExisting && variant.existingImages) {
+                        // Use existing product's images
+                        finalImages = variant.existingImages;
+                    } else if (variant.imageFiles && variant.imageFiles.length > 0) {
+                        // Upload new images for new products
                         for (const file of variant.imageFiles) {
                             const imageURL = await uploadImage(file);
-                            uploadedImages.push(imageURL);
+                            finalImages.push(imageURL);
                         }
                     }
 
@@ -59,8 +64,10 @@ export default function ProductGroupStep3({
                         cost: parseInt(variant.cost),
                         quantity: parseInt(variant.quantity),
                         discount: parseFloat(variant.discount || 0),
-                        images: uploadedImages,
-                        variantAttributes: variant.variantAttributes || {}
+                        images: finalImages,
+                        variantAttributes: variant.variantAttributes || {},
+                        // CRITICAL: Pass existingProductId to backend
+                        existingProductId: variant.existingProductId || null
                     };
                 })
             );
@@ -77,6 +84,19 @@ export default function ProductGroupStep3({
                 variants: variantsWithUploadedImages,
                 status: isDraft ? 'draft' : 'active'
             };
+
+            // DEBUG: Log data being sent
+            console.log('🔍 DEBUG: Sending product group data:', JSON.stringify(productGroupData, null, 2));
+            console.log('🔍 DEBUG: Variants count:', variantsWithUploadedImages.length);
+            variantsWithUploadedImages.forEach((v, i) => {
+                console.log(`🔍 DEBUG: Variant ${i}:`, {
+                    name: v.name,
+                    hasExistingId: !!v.existingProductId,
+                    existingProductId: v.existingProductId,
+                    hasImages: v.images?.length > 0,
+                    imageCount: v.images?.length
+                });
+            });
 
             const response = await axiosPublic.post('/products/group', productGroupData);
 
