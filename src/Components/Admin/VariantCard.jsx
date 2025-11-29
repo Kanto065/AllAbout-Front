@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { IoMdClose } from 'react-icons/io';
 import { FaImage, FaTrash } from 'react-icons/fa';
+import ProductSearchDropdown from './ProductSearchDropdown';
 
-export default function VariantCard({ variant, index, isMain, onChange, onRemove, canRemove }) {
+export default function VariantCard({ variant, index, isMain, mainCategory, category, excludeProductIds = [], onChange, onRemove, canRemove, onMakeMain }) {
     const [imagePreviewsLocal, setImagePreviewsLocal] = useState([]);
 
     const handleFieldChange = (field, value) => {
@@ -10,6 +11,7 @@ export default function VariantCard({ variant, index, isMain, onChange, onRemove
     };
 
     const handleImageChange = (e) => {
+        console.log('Image change triggered, files:', e.target.files);
         const files = Array.from(e.target.files);
 
         // Create preview URLs
@@ -18,10 +20,13 @@ export default function VariantCard({ variant, index, isMain, onChange, onRemove
 
         // Add files to variant
         const currentImages = variant.imageFiles || [];
-        onChange(index, { ...variant, imageFiles: [...currentImages, ...files] });
+        const updatedFiles = [...currentImages, ...files];
+        onChange(index, { ...variant, imageFiles: updatedFiles });
+        console.log('Updated variant with new images, total files:', updatedFiles.length);
     };
 
-    const handleRemoveImage = (imageIndex) => {
+    const handleRemoveNewImage = (imageIndex) => {
+        console.log('Removing new image at index:', imageIndex);
         const currentFiles = variant.imageFiles || [];
         const newFiles = currentFiles.filter((_, i) => i !== imageIndex);
 
@@ -29,6 +34,15 @@ export default function VariantCard({ variant, index, isMain, onChange, onRemove
         setImagePreviewsLocal(newPreviews);
 
         onChange(index, { ...variant, imageFiles: newFiles });
+        console.log('Updated imageFiles:', newFiles);
+    };
+
+    const handleRemoveExistingImage = (imageIndex) => {
+        console.log('Removing existing image at index:', imageIndex, 'Current images:', variant.existingImages);
+        const currentImages = variant.existingImages || [];
+        const newImages = currentImages.filter((_, i) => i !== imageIndex);
+        onChange(index, { ...variant, existingImages: newImages });
+        console.log('Updated existingImages:', newImages);
     };
 
     const handleAttributeChange = (key, value) => {
@@ -54,6 +68,8 @@ export default function VariantCard({ variant, index, isMain, onChange, onRemove
         ? ((variant.price - variant.cost) / variant.price * 100).toFixed(1)
         : 0;
 
+
+
     return (
         <div className={`bg-white p-6 rounded-lg shadow-md border-2 ${isMain ? 'border-yellow-400' : 'border-gray-200'}`}>
             {/* Header */}
@@ -66,17 +82,83 @@ export default function VariantCard({ variant, index, isMain, onChange, onRemove
                         </span>
                     )}
                 </h4>
-                {canRemove && (
+                {!isMain && onMakeMain && (
                     <button
                         type="button"
-                        onClick={() => onRemove(index)}
-                        className="text-red-500 hover:text-red-700 transition"
-                        title="Remove variant"
+                        onClick={() => onMakeMain(index)}
+                        className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition text-sm font-medium"
                     >
-                        <IoMdClose className="text-2xl" />
+                        ⭐ Make Main Product
                     </button>
                 )}
             </div>
+
+            {/* Variant Source Toggle - Only show if categories are provided */}
+            {mainCategory && category && (
+                <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+                    <label className="text-sm font-medium block mb-2">Variant Source:</label>
+                    <div className="flex gap-4">
+                        <label className="flex items-center cursor-pointer">
+                            <input
+                                type="radio"
+                                name={`variant-source-${index}`}
+                                value="new"
+                                checked={!variant.isExisting}
+                                onChange={() => {
+                                    onChange(index, {
+                                        name: '',
+                                        price: 0,
+                                        cost: 0,
+                                        quantity: 0,
+                                        discount: 0,
+                                        imageFiles: [],
+                                        variantAttributes: {},
+                                        isExisting: false
+                                    });
+                                }}
+                                className="mr-2"
+                            />
+                            <span className="text-sm">Create New Variant</span>
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                            <input
+                                type="radio"
+                                name={`variant-source-${index}`}
+                                value="existing"
+                                checked={variant.isExisting === true}
+                                onChange={() => {
+                                    onChange(index, { ...variant, isExisting: true });
+                                }}
+                                className="mr-2"
+                            />
+                            <span className="text-sm">Select Existing Product</span>
+                        </label>
+                    </div>
+
+                    {variant.isExisting && (
+                        <div className="mt-3">
+                            <ProductSearchDropdown
+                                mainCategory={mainCategory}
+                                category={category}
+                                onSelect={(product) => {
+                                    onChange(index, {
+                                        ...variant,
+                                        name: product.name,
+                                        price: product.price,
+                                        cost: product.cost,
+                                        quantity: product.quantity,
+                                        discount: product.discount || 0,
+                                        existingImages: product.images,
+                                        isExisting: true,
+                                        existingProductId: product._id
+                                    });
+                                }}
+                                excludeIds={excludeProductIds}
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Product Name */}
             <div className="mb-4">
@@ -172,6 +254,34 @@ export default function VariantCard({ variant, index, isMain, onChange, onRemove
                     Product Images <span className="text-red-500">*</span>
                 </label>
 
+                {/* Existing Images (for selected existing products) */}
+                {variant.existingImages && variant.existingImages.length > 0 && (
+                    <div className="mb-3">
+                        <p className="text-xs text-gray-600 mb-2 bg-blue-50 p-2 rounded border border-blue-200">
+                            📸 Existing Product Images
+                        </p>
+                        <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+                            {variant.existingImages.map((img, idx) => (
+                                <div key={idx} className="relative group">
+                                    <img
+                                        src={img}
+                                        alt={`Existing ${idx + 1}`}
+                                        className="w-full h-20 object-cover rounded border-2 border-blue-300"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveExistingImage(idx)}
+                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                                        title="Remove image"
+                                    >
+                                        <FaTrash className="text-xs" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Image Previews */}
                 {imagePreviewsLocal.length > 0 && (
                     <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mb-3">
@@ -184,7 +294,7 @@ export default function VariantCard({ variant, index, isMain, onChange, onRemove
                                 />
                                 <button
                                     type="button"
-                                    onClick={() => handleRemoveImage(idx)}
+                                    onClick={() => handleRemoveNewImage(idx)}
                                     className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
                                 >
                                     <FaTrash className="text-xs" />

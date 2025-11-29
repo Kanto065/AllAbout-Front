@@ -17,7 +17,7 @@ export default function Cart() {
   const [totalPrice, setTotalPrice] = useState(0);
   const [totalDiscountPrice, setTotalDiscountPrice] = useState(0);
   const [openModal, setOpenModal] = useState(false);
-  const [deliveryFee, setDeliveryFee] = useState(80); // Default delivery fee for inside Dhaka
+  const [deliveryFee, setDeliveryFee] = useState(80);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,14 +27,13 @@ export default function Cart() {
         parseInt(currentValue?.price * currentValue?.orderedQuantity),
       0
     );
-    console.log("cart", { cart });
     const totalDiscountPricee = cart?.reduce(
       (accumulator, currentValue) =>
         accumulator +
         parseInt(
           (currentValue?.price -
             (currentValue?.price / 100) * (100 - currentValue?.discount)) *
-            currentValue?.orderedQuantity
+          currentValue?.orderedQuantity
         ),
       0
     );
@@ -43,17 +42,16 @@ export default function Cart() {
   }, [cart]);
 
   const handleCheckOut = async (e) => {
-    e.preventDefault(); // Prevent the default form submission behavior
+    e.preventDefault();
     const form = e.target;
     const email = form?.email?.value || databaseUser?.email || user?.email;
-    // Gather order information
     const order = {
       name: form?.name?.value || databaseUser?.name,
       email,
       phone: form?.phone?.value || databaseUser?.phone,
       address: form?.address?.value || databaseUser?.location,
       deliveryFee,
-      variantName: cart.map(item => item.variant?.name || 'no-variant') // Add variant names
+      variantName: cart.map(item => item.variant?.name || 'no-variant')
     };
 
     try {
@@ -81,19 +79,62 @@ export default function Cart() {
   return (
     <div className="py-8">
       <div className="max-w-[95%] mx-auto z-40 overflow-x-auto flex flex-col lg:flex-row items-center lg:items-start space-y-10 lg:space-y-0 lg:space-x-5">
-        <div className="w-full lg:w-2/3 space-y-10">
-          <div className="w-full bg-white space-y-7 p-8">
-            <h1 className="text-2xl font-bold">Your Cart</h1>
-            {cart?.map((product, idx) => (
-              <CartItem key={`${product._id}-${product.variant?.name || 'no-variant'}`} product={product} reload={refetch} />
-            ))}
-            {cart?.length === 0 && (
-              <div className="flex items-center justify-center">
+        <div className="w-full lg:w-2/3">
+          <div className="w-full bg-gray-50 p-4 rounded-lg">
+            <h1 className="text-2xl font-bold mb-4 text-gray-900">Your Cart</h1>
+
+            {cart?.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
                 <img
-                  className="h-64 w-64 rounded-full"
+                  className="h-48 w-48 rounded-full opacity-75"
                   src="https://i.ibb.co/W27KqWw/Bk-Qx-D7wtn-Z.gif"
-                  alt="no data found"
+                  alt="Empty cart"
                 />
+                <p className="text-gray-500 mt-4">Your cart is empty</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(() => {
+                  const grouped = {};
+                  const ungrouped = [];
+
+                  cart.forEach(product => {
+                    if (product.productGroupId) {
+                      if (!grouped[product.productGroupId]) {
+                        grouped[product.productGroupId] = [];
+                      }
+                      grouped[product.productGroupId].push(product);
+                    } else {
+                      ungrouped.push(product);
+                    }
+                  });
+
+                  return (
+                    <>
+                      {Object.entries(grouped).map(([groupId, products]) => (
+                        <div key={groupId} className="border border-gray-300 rounded-lg p-2 bg-white space-y-2">
+                          {products.map((product) => (
+                            <CartItem
+                              key={`${product._id}-${product.variant?.name || 'no-variant'}`}
+                              product={product}
+                              reload={refetch}
+                              isGrouped={true}
+                            />
+                          ))}
+                        </div>
+                      ))}
+
+                      {ungrouped.map((product) => (
+                        <CartItem
+                          key={`${product._id}-${product.variant?.name || 'no-variant'}`}
+                          product={product}
+                          reload={refetch}
+                          isGrouped={false}
+                        />
+                      ))}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -154,10 +195,9 @@ export default function Cart() {
             <button
               onClick={() => setOpenModal(totalPrice > 0 && true)}
               disabled={cart.some((product) => product.orderedQuantity === 0) || totalPrice <= 0}
-              className={`text-white bg-[#8286bb] py-3 px-12 text-lg font-medium rounded-lg scale-100 hover:scale-110 duration-300 ${
-                (cart.some((product) => product.orderedQuantity === 0) || totalPrice <= 0) &&
+              className={`text-white bg-[#8286bb] py-3 px-12 text-lg font-medium rounded-lg scale-100 hover:scale-110 duration-300 ${(cart.some((product) => product.orderedQuantity === 0) || totalPrice <= 0) &&
                 'cursor-not-allowed opacity-50'
-              }`}
+                }`}
             >
               Check Out
             </button>
@@ -190,7 +230,6 @@ export default function Cart() {
               </h3>
             </div>
             <div className="lg:p-6 p-2">
-              {/* Shipping Details form */}
               <form className="space-y-4" onSubmit={handleCheckOut}>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Name</label>

@@ -2,6 +2,7 @@ import Swal from "sweetalert2";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import AddProduct from "./AddProduct";
 import AddProductGroup from "./AddProductGroup";
 import useAllProducts from "../../../Hooks/useAllProducts";
@@ -15,7 +16,7 @@ export default function AllProduct() {
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [itemsPerPage, setItemsPerPage] = useState(100);
 
     // Calculate pagination
     const indexOfLastItem = currentPage * itemsPerPage;
@@ -64,8 +65,8 @@ export default function AllProduct() {
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                     className={`px-3 py-1 rounded ${currentPage === 1
-                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            : 'bg-blue-500 text-white hover:bg-blue-600'
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-500 text-white hover:bg-blue-600'
                         }`}
                 >
                     Previous
@@ -84,8 +85,8 @@ export default function AllProduct() {
                                 key={pageNumber}
                                 onClick={() => handlePageChange(pageNumber)}
                                 className={`px-3 py-1 rounded ${currentPage === pageNumber
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                     }`}
                             >
                                 {pageNumber}
@@ -104,8 +105,8 @@ export default function AllProduct() {
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
                     className={`px-3 py-1 rounded ${currentPage === totalPages
-                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            : 'bg-blue-500 text-white hover:bg-blue-600'
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-500 text-white hover:bg-blue-600'
                         }`}
                 >
                     Next
@@ -232,17 +233,13 @@ export default function AllProduct() {
                                     <div className="flex item-center justify-center space-x-2">
                                         <Link
                                             to={`/dashboard/admin/allproducts/${product?.name}`}
-                                            className="w-6 mr-2 transform hover:text-purple-500 hover:scale-110">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12h3m4 0h3m-4 0h4m-4 4h4m-4-8h4M9 12h3M4 16h4M4 8h4m0 4h4m-4 4h4M9 16h3M9 8h3m-6 8h3M4 12h3" />
-                                            </svg>
+                                            className="mr-2 transform hover:text-blue-500 hover:scale-110 transition">
+                                            <FiEdit2 size={20} />
                                         </Link>
                                         <button
                                             onClick={() => handleDelete(product?._id)}
-                                            className="w-6 mr-2 transform hover:text-red-500 hover:scale-110">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
+                                            className="mr-2 transform hover:text-red-500 hover:scale-110 transition">
+                                            <FiTrash2 size={20} />
                                         </button>
                                     </div>
                                 </td>

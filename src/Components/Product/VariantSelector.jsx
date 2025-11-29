@@ -1,6 +1,12 @@
 import React from 'react';
 
-export default function VariantSelector({ variants, selectedVariant, onSelectVariant }) {
+export default function VariantSelector({
+    variants,
+    selectedVariant,
+    onSelectVariant,
+    variantQuantities = {},
+    onQuantityChange
+}) {
     if (!variants || variants.length === 0) {
         return null;
     }
@@ -10,97 +16,107 @@ export default function VariantSelector({ variants, selectedVariant, onSelectVar
         return null;
     }
 
+    const handleQuantityChange = (variantId, change) => {
+        const variant = variants.find(v => v._id === variantId);
+        if (!variant) return;
+
+        const currentQty = variantQuantities[variantId] || 0;
+        const newQty = Math.max(0, Math.min(variant.quantity, currentQty + change));
+
+        onQuantityChange(variantId, newQty);
+    };
+
+    const handleInputChange = (variantId, value) => {
+        const variant = variants.find(v => v._id === variantId);
+        if (!variant) return;
+
+        // Parse input value
+        const numValue = parseInt(value) || 0;
+        const newQty = Math.max(0, Math.min(variant.quantity, numValue));
+
+        onQuantityChange(variantId, newQty);
+    };
+
     return (
-        <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-3">
+        <div className="mt-4">
+            <h3 className="text-sm font-semibold mb-2 text-gray-700">
                 Available Variants ({variants.length})
             </h3>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="space-y-2">
                 {variants.map((variant) => {
                     const isSelected = selectedVariant?._id === variant._id;
-                    const isMainProduct = variant.isMainProduct;
                     const isOutOfStock = variant.quantity < 1;
+                    const quantity = variantQuantities[variant._id] || 0;
+                    const price = parseInt(variant.price) - (parseInt(variant.price) / 100) * variant.discount;
 
                     return (
                         <div
                             key={variant._id}
-                            onClick={() => !isOutOfStock && onSelectVariant(variant)}
                             className={`
-                                relative p-3 rounded-lg border-2 cursor-pointer transition-all
-                                ${isSelected
-                                    ? 'border-blue-500 bg-blue-50'
-                                    : 'border-gray-200 hover:border-gray-400'
-                                }
-                                ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}
+                                flex items-center justify-between p-2 rounded border transition-all
+                                ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}
+                                ${isOutOfStock ? 'opacity-50' : ''}
                             `}
                         >
-                            {/* Main Product Badge */}
-                            {isMainProduct && (
-                                <div className="absolute top-1 right-1 bg-yellow-400 text-yellow-900 text-xs px-2 py-0.5 rounded">
-                                    ⭐
+                            {/* Left: Image + Name + Price */}
+                            <div
+                                className="flex items-center gap-2 flex-1 cursor-pointer min-w-0"
+                                onClick={() => !isOutOfStock && onSelectVariant(variant)}
+                            >
+                                {/* Thumbnail */}
+                                <div className="relative flex-shrink-0">
+                                    <img
+                                        src={variant.images?.[0]}
+                                        alt={variant.name}
+                                        className="w-12 h-12 object-cover rounded border border-gray-200"
+                                    />
                                 </div>
-                            )}
 
-                            {/* Variant Image */}
-                            <div className="aspect-square mb-2 overflow-hidden rounded">
-                                <img
-                                    src={variant.images?.[0]}
-                                    alt={variant.name}
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-
-                            {/* Variant Name */}
-                            <h4 className="text-sm font-medium line-clamp-2 mb-1">
-                                {variant.name}
-                            </h4>
-
-                            {/* Price */}
-                            <div className="flex items-center gap-1 mb-1">
-                                <span className="text-sm font-bold text-red-600">
-                                    ৳{parseInt(variant.price) - (parseInt(variant.price) / 100) * variant.discount}
-                                </span>
-                                {variant.discount > 0 && (
-                                    <>
-                                        <span className="text-xs line-through text-gray-400">
-                                            ৳{variant.price}
+                                {/* Name + Price */}
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="text-sm font-medium text-gray-900 truncate">
+                                        {variant.name}
+                                    </h4>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                        <span className="text-sm font-semibold text-red-600">
+                                            ৳{price}
                                         </span>
-                                        <span className="text-xs text-green-600">
-                                            -{variant.discount}%
-                                        </span>
-                                    </>
-                                )}
-                            </div>
-
-                            {/* Stock Status */}
-                            <div className="text-xs">
-                                {isOutOfStock ? (
-                                    <span className="text-red-500 font-medium">Out of Stock</span>
-                                ) : variant.quantity < 5 ? (
-                                    <span className="text-orange-500">Only {variant.quantity} left</span>
-                                ) : (
-                                    <span className="text-green-600">In Stock ({variant.quantity})</span>
-                                )}
-                            </div>
-
-                            {/* Variant Attributes */}
-                            {variant.variantAttributes && Object.keys(variant.variantAttributes).length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-1">
-                                    {Object.entries(variant.variantAttributes).map(([key, value]) => (
-                                        <span
-                                            key={key}
-                                            className="text-xs bg-gray-100 px-2 py-0.5 rounded"
-                                        >
-                                            {value}
-                                        </span>
-                                    ))}
+                                        {variant.discount > 0 && (
+                                            <span className="text-xs text-green-600">
+                                                -{variant.discount}%
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
+                            </div>
 
-                            {/* Selected Indicator */}
-                            {isSelected && (
-                                <div className="absolute inset-0 border-2 border-blue-500 rounded-lg pointer-events-none"></div>
+                            {/* Right: Quantity Selector with Rounded Style */}
+                            {!isOutOfStock && (
+                                <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
+                                    <button
+                                        onClick={() => handleQuantityChange(variant._id, -1)}
+                                        disabled={quantity <= 0}
+                                        className="w-8 h-8 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition font-bold text-lg"
+                                    >
+                                        −
+                                    </button>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max={variant.quantity}
+                                        value={quantity}
+                                        onChange={(e) => handleInputChange(variant._id, e.target.value)}
+                                        className="w-12 h-8 text-center font-semibold text-sm text-gray-900 bg-white border-x border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <button
+                                        onClick={() => handleQuantityChange(variant._id, 1)}
+                                        disabled={quantity >= variant.quantity}
+                                        className="w-8 h-8 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition font-bold text-lg"
+                                    >
+                                        +
+                                    </button>
+                                </div>
                             )}
                         </div>
                     );
@@ -108,8 +124,8 @@ export default function VariantSelector({ variants, selectedVariant, onSelectVar
             </div>
 
             {/* Helper Text */}
-            <p className="text-sm text-gray-500 mt-3">
-                Click on a variant to view its details and add to cart
+            <p className="text-xs text-gray-500 mt-2">
+                💡 Click on variant to view details. Use +/− or type quantity directly.
             </p>
         </div>
     );

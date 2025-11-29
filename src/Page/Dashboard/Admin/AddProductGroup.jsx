@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import ProductGroupStep1 from '../../../Components/Admin/ProductGroupStep1';
-import ProductGroupStep2 from '../../../Components/Admin/ProductGroupStep2';
+import ProductGroupStep1Combined from '../../../Components/Admin/ProductGroupStep1Combined';
 import ProductGroupStep3 from '../../../Components/Admin/ProductGroupStep3';
 
 export default function AddProductGroup({ setAdd, setReload }) {
@@ -32,7 +31,7 @@ export default function AddProductGroup({ setAdd, setReload }) {
     ]);
 
     const handleNext = () => {
-        if (currentStep < 3) {
+        if (currentStep < 2) {
             setCurrentStep(currentStep + 1);
         }
     };
@@ -62,7 +61,7 @@ export default function AddProductGroup({ setAdd, setReload }) {
             </div>
 
             {/* Progress Indicator */}
-            <div className="max-w-3xl mx-auto mb-8">
+            <div className="max-w-2xl mx-auto mb-8">
                 <div className="flex items-center justify-between">
                     {/* Step 1 */}
                     <div className="flex flex-col items-center flex-1">
@@ -74,7 +73,7 @@ export default function AddProductGroup({ setAdd, setReload }) {
                         >
                             1
                         </div>
-                        <span className="text-xs mt-2 text-center">Product Info</span>
+                        <span className="text-xs mt-2 text-center">Product Info + Variants</span>
                     </div>
 
                     {/* Line */}
@@ -93,25 +92,6 @@ export default function AddProductGroup({ setAdd, setReload }) {
                         >
                             2
                         </div>
-                        <span className="text-xs mt-2 text-center">Add Variants</span>
-                    </div>
-
-                    {/* Line */}
-                    <div
-                        className={`flex-1 h-1 ${currentStep >= 3 ? 'bg-blue-500' : 'bg-gray-300'
-                            }`}
-                    ></div>
-
-                    {/* Step 3 */}
-                    <div className="flex flex-col items-center flex-1">
-                        <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${currentStep >= 3
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-300 text-gray-600'
-                                }`}
-                        >
-                            3
-                        </div>
                         <span className="text-xs mt-2 text-center">Review & Publish</span>
                     </div>
                 </div>
@@ -120,26 +100,17 @@ export default function AddProductGroup({ setAdd, setReload }) {
             {/* Step Content */}
             <div className="max-w-5xl mx-auto">
                 {currentStep === 1 && (
-                    <ProductGroupStep1
+                    <ProductGroupStep1Combined
                         sharedInfo={sharedInfo}
                         setSharedInfo={setSharedInfo}
+                        variants={variants}
+                        setVariants={setVariants}
                         onNext={handleNext}
                         onCancel={handleCancel}
                     />
                 )}
 
                 {currentStep === 2 && (
-                    <ProductGroupStep2
-                        variants={variants}
-                        setVariants={setVariants}
-                        sharedInfo={sharedInfo}
-                        onNext={handleNext}
-                        onBack={handleBack}
-                        onCancel={handleCancel}
-                    />
-                )}
-
-                {currentStep === 3 && (
                     <ProductGroupStep3
                         sharedInfo={sharedInfo}
                         variants={variants}
