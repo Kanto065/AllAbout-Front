@@ -130,8 +130,8 @@ export default function CartItem({ product, reload, message, isGrouped }) {
   };
 
   const handleNavigateToProduct = () => {
-    // Use product ID instead of name to avoid 404 errors
-    navigate(`/product/${product?._id}`);
+    // Navigate using product name to match the route definition
+    navigate(`/products/${product?.name}`);
   };
 
   const price = product.price - (product.price * product.discount / 100);
