@@ -13,6 +13,8 @@ export default function ProductGroupStep1Combined({
     setSharedInfo,
     variants,
     setVariants,
+    groupImageFiles,
+    setGroupImageFiles,
     onNext,
     onCancel,
     isEditMode = false
@@ -59,6 +61,7 @@ export default function ProductGroupStep1Combined({
         setVariants(newVariants);
         setActiveTab(newVariants.length - 1); // Switch to new tab
     };
+
 
 
     const handleRemoveVariant = async (index) => {
@@ -260,6 +263,24 @@ export default function ProductGroupStep1Combined({
                     This information will be shared across all variants in this product group.
                 </p>
 
+                {/* Product Group Name */}
+                <div className="mb-6">
+                    <label className="block mb-2">
+                        Product Group Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        className="w-full p-2 rounded bg-gray-200 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={sharedInfo.productGroupName}
+                        onChange={(e) => handleChange('productGroupName', e.target.value)}
+                        placeholder="e.g., Alcohol Ink - Blue"
+                        required
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                        Enter the full product group name including variant details
+                    </p>
+                </div>
+
                 {/* Categories Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
                     {/* Main Category */}
@@ -347,7 +368,58 @@ export default function ProductGroupStep1Combined({
                     <p className="text-sm text-gray-500 mt-1">
                         This description will be shown for all variants in this group.
                     </p>
-                </div>
+
+                {/* Product Group Images */}
+                <div className="mb-6">
+                    <label className="block mb-2">
+                        Product Group Images <span className="text-red-500">*</span>
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition">
+                        <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={(e) => {
+                                const files = Array.from(e.target.files);
+                                setGroupImageFiles(files);
+                            }}
+                            className="hidden"
+                            id="group-image-upload"
+                        />
+                        <label htmlFor="group-image-upload" className="cursor-pointer">
+                            <div className="text-gray-600">
+                                <p className="text-lg mb-2"> Click to upload images</p>
+                                <p className="text-sm">Upload multiple images for Product Group</p>
+                            </div>
+                        </label>
+                    </div>
+                    {groupImageFiles && groupImageFiles.length > 0 && (
+                        <div className="mt-4 grid grid-cols-4 gap-2">
+                            {groupImageFiles.map((file, idx) => (
+                                <div key={idx} className="relative">
+                                    <img
+                                        src={URL.createObjectURL(file)}
+                                        alt={Group }
+                                        className="w-full h-24 object-cover rounded border"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newFiles = groupImageFiles.filter((_, i) => i !== idx);
+                                            setGroupImageFiles(newFiles);
+                                        }}
+                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                                    >
+                                        
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <p className="text-sm text-gray-500 mt-2">
+                        Upload at least 1 image for the product group
+                    </p>
+                </div>                </div>
 
                 {/* Details (Rich Text Editor) */}
                 <div>
@@ -409,11 +481,6 @@ export default function ProductGroupStep1Combined({
                             >
                                 <div className="flex items-center gap-2">
                                     <span>{variant.name || `Variant ${index + 1}`}</span>
-                                    {index === 0 && (
-                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                                            Main
-                                        </span>
-                                    )}
                                     {variants.length > 1 && (
                                         <span
                                             onClick={(e) => {
@@ -484,3 +551,4 @@ export default function ProductGroupStep1Combined({
         </form>
     );
 }
+

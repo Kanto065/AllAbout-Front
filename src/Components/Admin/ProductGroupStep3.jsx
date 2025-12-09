@@ -4,6 +4,7 @@ import useAxiosPublic from '../../Hooks/useAxiosPublic';
 
 export default function ProductGroupStep3({
     sharedInfo,
+    groupImageFiles,
     variants,
     onBack,
     onCancel,
@@ -41,7 +42,21 @@ export default function ProductGroupStep3({
         setSaveAsDraft(isDraft);
 
         try {
+            // Upload group images first
+            let groupImageUrls = [];
+            if (groupImageFiles && groupImageFiles.length > 0) {
+                setMessage('Uploading group images...');
+                for (const file of groupImageFiles) {
+                    const imageURL = await uploadImage(file);
+                    groupImageUrls.push(imageURL);
+                }
+            } else if (sharedInfo.groupImages && sharedInfo.groupImages.length > 0) {
+                // Use existing group images (for edit mode)
+                groupImageUrls = sharedInfo.groupImages;
+            }
+
             // Upload all images for all variants
+            setMessage('Uploading variant images...');
             const variantsWithUploadedImages = await Promise.all(
                 variants.map(async (variant) => {
                     let finalImages = [];
@@ -73,13 +88,16 @@ export default function ProductGroupStep3({
             );
 
             // Create product group
+            setMessage('Creating product group...');
             const productGroupData = {
                 sharedInfo: {
+                    productGroupName: sharedInfo.productGroupName,
                     mainCategory: sharedInfo.mainCategory,
                     category: sharedInfo.category,
                     subCategory: sharedInfo.subCategory || '',
                     description: sharedInfo.description,
-                    details: sharedInfo.details || ''
+                    details: sharedInfo.details || '',
+                    groupImages: groupImageUrls
                 },
                 variants: variantsWithUploadedImages,
                 status: isDraft ? 'draft' : 'active'
@@ -87,6 +105,7 @@ export default function ProductGroupStep3({
 
             // DEBUG: Log data being sent
             console.log('🔍 DEBUG: Sending product group data:', JSON.stringify(productGroupData, null, 2));
+            console.log('🔍 DEBUG: Group images:', groupImageUrls);
             console.log('🔍 DEBUG: Variants count:', variantsWithUploadedImages.length);
             variantsWithUploadedImages.forEach((v, i) => {
                 console.log(`🔍 DEBUG: Variant ${i}:`, {
@@ -139,6 +158,39 @@ export default function ProductGroupStep3({
             {/* Product Group Summary */}
             <div className="bg-white p-6 rounded-lg shadow-md">
                 <h4 className="text-xl font-bold mb-4">Product Group Summary</h4>
+
+                {/* Product Group Name */}
+                <div className="mb-4 p-4 bg-blue-50 rounded">
+                    <p className="text-sm text-gray-600 mb-1">Product Group Name</p>
+                    <p className="text-xl font-bold text-blue-700">{sharedInfo.productGroupName}</p>
+                </div>
+
+                {/* Group Images Preview */}
+                {((groupImageFiles && groupImageFiles.length > 0) || (sharedInfo.groupImages && sharedInfo.groupImages.length > 0)) && (
+                    <div className="mb-4">
+                        <p className="text-sm text-gray-600 mb-2">Product Group Images</p>
+                        <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
+                            {/* Existing images */}
+                            {sharedInfo.groupImages && sharedInfo.groupImages.map((url, index) => (
+                                <img
+                                    key={`existing-${index}`}
+                                    src={url}
+                                    alt={`Group image ${index + 1}`}
+                                    className="w-full h-20 object-cover rounded border-2 border-gray-300"
+                                />
+                            ))}
+                            {/* New images */}
+                            {groupImageFiles && groupImageFiles.map((file, index) => (
+                                <img
+                                    key={`new-${index}`}
+                                    src={URL.createObjectURL(file)}
+                                    alt={`New group image ${index + 1}`}
+                                    className="w-full h-20 object-cover rounded border-2 border-blue-500"
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>

@@ -10,14 +10,23 @@ export default function Product({ product }) {
   const navigate = useNavigate();
 
   const handleCartClick = () => {
-    if (product?.variants && Object.keys(product.variants).length > 0) {
-      // Navigate to the product details page if variants are available
+    // Check if product has multiple variants (productGroupId indicates variant system)
+    if (product?.productGroupId) {
+      // Navigate to the product details page if it's a multi-variant product
+      navigate(`/products/${product?.name}`);
+    } else if (product?.variants && Object.keys(product.variants).length > 0) {
+      // OLD variant system - Navigate to the product details page
       navigate(`/products/${product?.name}`);
     } else {
-      // Add to cart logic here
+      // Add to cart logic here for single products
       console.log("Product added to cart:", product);
     }
   };
+
+  // Determine which images to display: group images if available, otherwise variant images
+  const displayImages = product?.groupImages && product.groupImages.length > 0
+    ? product.groupImages
+    : product?.images || [];
 
   return (
     <div className="bg-white relative overflow-hidden shadow-lg p-0.5 border h-full flex flex-col">
@@ -25,13 +34,13 @@ export default function Product({ product }) {
       <div className="w-fill overflow-hidden">
         <Link to={`/products/${product?.name}`}>
           <img
-            src={product?.images[selectedImage]}
+            src={displayImages[selectedImage]}
             alt={product?.name}
             className="w-full h-[180px] md:h-[220px] lg:h-[280px] object-cover scale-100 hover:scale-105 duration-150"
           />
         </Link>
         <div className="flex justify-center items-center space-x-2 overflow-auto mt-1.5">
-          {product?.images?.map((img, idx) => (
+          {displayImages?.map((img, idx) => (
             <img
               key={idx}
               onMouseEnter={() => setSelectedImage(idx)} // Change image on hover
@@ -108,7 +117,7 @@ export default function Product({ product }) {
           ) : (
             <div className="flex justify-between px-1 pb-1">
               <Wish id={product?._id} />
-              {product?.variants && Object.keys(product.variants).length > 0 ? (
+              {(product?.productGroupId || (product?.variants && Object.keys(product.variants).length > 0)) ? (
                 <button onClick={handleCartClick}>
                   <div className="bg-[#1E93D1] text-white rounded-full p-1 text-xl md:text-3xl">
                     <IoMdAdd />

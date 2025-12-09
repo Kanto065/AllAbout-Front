@@ -470,7 +470,21 @@ const ProductDetails = () => {
 
   // Determine what to display (NEW variant system or OLD or single product)
   const displayData = currentVariant || productData;
-  const displayImages = hasVariants && combinedImages.length > 0 ? combinedImages : (displayData?.images || []);
+
+  // Image display priority: group images > combined variant images > individual product images
+  const displayImages = (() => {
+    // If product has group images, use them
+    if (productData?.groupImages && productData.groupImages.length > 0) {
+      return productData.groupImages;
+    }
+    // Otherwise use combined images from all variants
+    if (hasVariants && combinedImages.length > 0) {
+      return combinedImages;
+    }
+    // Fall back to current display data images
+    return displayData?.images || [];
+  })();
+
   const displayPrice = displayData?.price || 0;
   const displayCost = displayData?.cost || 0;
   const displayDiscount = displayData?.discount || 0;
@@ -532,7 +546,7 @@ const ProductDetails = () => {
             </div>
             <div className="lg:hidden">
               <Slider {...settings} ref={sliderRef}>
-                {displayImages?.map((media, idx) =>
+                {[...new Set(displayImages)]?.map((media, idx) =>
                   isVideo(media) ? (
                     <video
                       key={idx}
@@ -547,7 +561,7 @@ const ProductDetails = () => {
                     <img
                       key={idx}
                       src={media}
-                      alt={`Thumbnail ${idx}`}
+                      alt={`Slide ${idx}`}
                       className="w-full object-contain"
                     />
                   )
@@ -699,19 +713,30 @@ const ProductDetails = () => {
             <div className="mt-4">
               <div className="flex items-center space-x-2">
                 <span className="font-medium text-lg">Order Quantity: </span>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
                   <button
                     onClick={() => setOrderQuantity(Math.max(0, orderQuantity - 1))}
-                    className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
                     disabled={orderQuantity <= 0}
+                    className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition font-bold text-xl"
                   >
-                    -
+                    −
                   </button>
-                  <span className="text-lg">{orderQuantity}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={displayQuantity}
+                    value={orderQuantity}
+                    onChange={(e) => {
+                      const numValue = parseInt(e.target.value) || 0;
+                      const newQty = Math.max(0, Math.min(displayQuantity, numValue));
+                      setOrderQuantity(newQty);
+                    }}
+                    className="w-16 h-10 text-center font-semibold text-base text-gray-900 bg-white border-x border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                   <button
                     onClick={() => setOrderQuantity(Math.min(displayQuantity, orderQuantity + 1))}
-                    className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition"
                     disabled={orderQuantity >= displayQuantity}
+                    className="w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition font-bold text-xl"
                   >
                     +
                   </button>

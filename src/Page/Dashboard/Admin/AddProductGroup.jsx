@@ -10,12 +10,17 @@ export default function AddProductGroup({ setAdd, setReload }) {
 
     // Shared information (applies to all variants)
     const [sharedInfo, setSharedInfo] = useState({
+        productGroupName: '',
         mainCategory: '',
         category: '',
         subCategory: '',
         description: '',
-        details: ''
+        details: '',
+        groupImages: []
     });
+
+    // Group image files (before upload)
+    const [groupImageFiles, setGroupImageFiles] = useState([]);
 
     // Variants (individual products)
     const [variants, setVariants] = useState([
@@ -103,6 +108,8 @@ export default function AddProductGroup({ setAdd, setReload }) {
                     <ProductGroupStep1Combined
                         sharedInfo={sharedInfo}
                         setSharedInfo={setSharedInfo}
+                        groupImageFiles={groupImageFiles}
+                        setGroupImageFiles={setGroupImageFiles}
                         variants={variants}
                         setVariants={setVariants}
                         onNext={handleNext}
@@ -113,6 +120,7 @@ export default function AddProductGroup({ setAdd, setReload }) {
                 {currentStep === 2 && (
                     <ProductGroupStep3
                         sharedInfo={sharedInfo}
+                        groupImageFiles={groupImageFiles}
                         variants={variants}
                         onBack={handleBack}
                         onCancel={handleCancel}

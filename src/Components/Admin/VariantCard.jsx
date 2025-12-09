@@ -71,16 +71,11 @@ export default function VariantCard({ variant, index, isMain, mainCategory, cate
 
 
     return (
-        <div className={`bg-white p-6 rounded-lg shadow-md border-2 ${isMain ? 'border-yellow-400' : 'border-gray-200'}`}>
+        <div className="bg-white p-6 rounded-lg shadow-md border-2 border-gray-200">
             {/* Header */}
             <div className="flex justify-between items-center mb-4">
                 <h4 className="text-xl font-bold flex items-center gap-2">
                     Variant {index + 1}
-                    {isMain && (
-                        <span className="text-sm bg-yellow-400 text-yellow-900 px-2 py-1 rounded font-normal">
-                            ⭐ Main Product
-                        </span>
-                    )}
                 </h4>
             </div>
 
