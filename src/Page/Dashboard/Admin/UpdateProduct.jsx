@@ -14,6 +14,7 @@ import ProductGroupStep1Combined from '../../../Components/Admin/ProductGroupSte
 // Component for editing product groups
 function ProductGroupEditForm({ groupData, navigate, axiosPublic }) {
     const [sharedInfo, setSharedInfo] = useState({
+        productGroupName: groupData.mainProduct.productGroupName || '',
         mainCategory: groupData.mainProduct.mainCategory,
         category: groupData.mainProduct.category,
         subCategory: groupData.mainProduct.subCategory || '',
@@ -35,6 +36,9 @@ function ProductGroupEditForm({ groupData, navigate, axiosPublic }) {
             isExisting: false
         }))
     );
+
+    const [groupImageFiles, setGroupImageFiles] = useState([]);
+    const [existingGroupImages, setExistingGroupImages] = useState(groupData.mainProduct.groupImages || []);
 
     const [loading, setLoading] = useState(false);
 
@@ -60,9 +64,19 @@ function ProductGroupEditForm({ groupData, navigate, axiosPublic }) {
         try {
             setLoading(true);
 
+            // Upload new group images
+            let uploadedGroupImageUrls = [];
+            if (groupImageFiles.length > 0) {
+                for (const file of groupImageFiles) {
+                    const url = await uploadImage(file);
+                    uploadedGroupImageUrls.push(url);
+                }
+            }
+            const finalGroupImages = [...existingGroupImages, ...uploadedGroupImageUrls];
+
             // Update shared info for all products in group
             await axiosPublic.put(`/products/group/${groupData.productGroupId}`, {
-                sharedInfo
+                sharedInfo: { ...sharedInfo, groupImages: finalGroupImages }
             });
 
             // Update each variant
@@ -158,9 +172,14 @@ function ProductGroupEditForm({ groupData, navigate, axiosPublic }) {
                 setSharedInfo={setSharedInfo}
                 variants={variants}
                 setVariants={setVariants}
+                groupImageFiles={groupImageFiles}
+                setGroupImageFiles={setGroupImageFiles}
+                existingGroupImages={existingGroupImages}
+                onRemoveExistingGroupImage={(idx) => setExistingGroupImages(prev => prev.filter((_, i) => i !== idx))}
                 onNext={handleSave}
                 onCancel={() => navigate('/dashboard/admin/allproducts')}
                 isEditMode={true}
+                loading={loading}
             />
         </div>
     );

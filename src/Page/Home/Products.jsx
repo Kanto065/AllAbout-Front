@@ -30,12 +30,12 @@ export default function Products() {
     const fetchProducts = async () => {
       try {
         const res = await axiosPublic.get(
-          `/products?page=${page}&limit=10&type=${typ}`
+          `/products?page=${page}&limit=10&type=${typ}&mainOnly=true`
         );
         if (res?.data.length < 10) {
           setHasMore(false);
         }
-        
+
         // Filter out any duplicate products based on _id
         setShowProducts((prevProducts) => {
           const newProducts = res?.data || [];
@@ -92,8 +92,8 @@ export default function Products() {
         {showProducts?.map((product, index) => {
           const isLastElement = showProducts.length === index + 1;
           return (
-            <div 
-              key={`${product._id}-${index}`} 
+            <div
+              key={`${product._id}-${index}`}
               ref={isLastElement ? lastProductRef : null}
             >
               <Product product={product} />

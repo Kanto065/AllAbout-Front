@@ -471,18 +471,25 @@ const ProductDetails = () => {
   // Determine what to display (NEW variant system or OLD or single product)
   const displayData = currentVariant || productData;
 
-  // Image display priority: group images > combined variant images > individual product images
+  // Image display priority: combine group images and all variant images
   const displayImages = (() => {
-    // If product has group images, use them
+    let images = [];
+
+    // Add group images
     if (productData?.groupImages && productData.groupImages.length > 0) {
-      return productData.groupImages;
+      images = [...productData.groupImages];
     }
-    // Otherwise use combined images from all variants
+
+    // Add combined variant images
     if (hasVariants && combinedImages.length > 0) {
-      return combinedImages;
+      images = [...images, ...combinedImages];
+    } else if (displayData?.images) {
+      // Fallback to current display data images if no combined images
+      images = [...images, ...displayData.images];
     }
-    // Fall back to current display data images
-    return displayData?.images || [];
+
+    // Return unique images
+    return [...new Set(images)];
   })();
 
   const displayPrice = displayData?.price || 0;

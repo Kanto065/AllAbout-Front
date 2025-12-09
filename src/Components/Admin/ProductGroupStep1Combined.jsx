@@ -17,7 +17,10 @@ export default function ProductGroupStep1Combined({
     setGroupImageFiles,
     onNext,
     onCancel,
-    isEditMode = false
+    isEditMode = false,
+    existingGroupImages = [],
+    onRemoveExistingGroupImage,
+    loading = false
 }) {
     const axiosPublic = useAxiosPublic();
     const [mainCategories] = useMainCategories();
@@ -381,7 +384,7 @@ export default function ProductGroupStep1Combined({
                                 accept="image/*"
                                 onChange={(e) => {
                                     const files = Array.from(e.target.files);
-                                    setGroupImageFiles(files);
+                                    setGroupImageFiles(prev => [...prev, ...files]);
                                 }}
                                 className="hidden"
                                 id="group-image-upload"
@@ -393,13 +396,32 @@ export default function ProductGroupStep1Combined({
                                 </div>
                             </label>
                         </div>
-                        {groupImageFiles && groupImageFiles.length > 0 && (
+                        {(existingGroupImages?.length > 0 || (groupImageFiles && groupImageFiles.length > 0)) && (
                             <div className="mt-4 grid grid-cols-4 gap-2">
-                                {groupImageFiles.map((file, idx) => (
-                                    <div key={idx} className="relative">
+                                {/* Existing Images */}
+                                {existingGroupImages?.map((url, idx) => (
+                                    <div key={`existing-${idx}`} className="relative">
+                                        <img
+                                            src={url}
+                                            alt={`Existing Group ${idx + 1}`}
+                                            className="w-full h-24 object-cover rounded border"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => onRemoveExistingGroupImage && onRemoveExistingGroupImage(idx)}
+                                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+
+                                {/* New Images */}
+                                {groupImageFiles?.map((file, idx) => (
+                                    <div key={`new-${idx}`} className="relative">
                                         <img
                                             src={URL.createObjectURL(file)}
-                                            alt={`Group ${idx + 1}`}
+                                            alt={`New Group ${idx + 1}`}
                                             className="w-full h-24 object-cover rounded border"
                                         />
                                         <button
@@ -544,9 +566,17 @@ export default function ProductGroupStep1Combined({
                 </button>
                 <button
                     type="submit"
-                    className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                    className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition flex items-center justify-center gap-2 min-w-[150px]"
+                    disabled={loading}
                 >
-                    {isEditMode ? 'Save Changes' : 'Next: Review & Publish →'}
+                    {loading ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            {isEditMode ? 'Saving...' : 'Processing...'}
+                        </>
+                    ) : (
+                        isEditMode ? 'Save Changes' : 'Next: Review & Publish →'
+                    )}
                 </button>
             </div>
         </form>

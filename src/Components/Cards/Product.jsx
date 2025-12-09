@@ -23,10 +23,11 @@ export default function Product({ product }) {
     }
   };
 
-  // Determine which images to display: group images if available, otherwise variant images
-  const displayImages = product?.groupImages && product.groupImages.length > 0
-    ? product.groupImages
-    : product?.images || [];
+  // Determine which images to display: combine group images and variant images
+  const displayImages = [...new Set([
+    ...(product?.groupImages || []),
+    ...(product?.images || [])
+  ])];
 
   return (
     <div className="bg-white relative overflow-hidden shadow-lg p-0.5 border h-full flex flex-col">
