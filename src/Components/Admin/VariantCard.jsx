@@ -305,7 +305,7 @@ export default function VariantCard({ variant, index, isMain, mainCategory, cate
                     />
                 </label>
                 <p className="text-xs text-gray-500 mt-1">
-                    Upload multiple images for this variant. First image will be the main image.
+                    Upload multiple images for this variant.
                 </p>
             </div>
 

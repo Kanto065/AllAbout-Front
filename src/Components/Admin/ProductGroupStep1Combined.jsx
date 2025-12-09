@@ -265,7 +265,7 @@ export default function ProductGroupStep1Combined({
 
                 {/* Product Group Name */}
                 <div className="mb-6">
-                    <label className="block mb-2">
+                    <label className="text-lg font-medium block mb-2">
                         Product Group Name <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -369,57 +369,58 @@ export default function ProductGroupStep1Combined({
                         This description will be shown for all variants in this group.
                     </p>
 
-                {/* Product Group Images */}
-                <div className="mb-6">
-                    <label className="block mb-2">
-                        Product Group Images <span className="text-red-500">*</span>
-                    </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition">
-                        <input
-                            type="file"
-                            multiple
-                            accept="image/*"
-                            onChange={(e) => {
-                                const files = Array.from(e.target.files);
-                                setGroupImageFiles(files);
-                            }}
-                            className="hidden"
-                            id="group-image-upload"
-                        />
-                        <label htmlFor="group-image-upload" className="cursor-pointer">
-                            <div className="text-gray-600">
-                                <p className="text-lg mb-2"> Click to upload images</p>
-                                <p className="text-sm">Upload multiple images for Product Group</p>
-                            </div>
+                    {/* Product Group Images */}
+                    <div className="mb-6">
+                        <label className="text-lg font-medium block mb-2">
+                            Product Group Images <span className="text-red-500">*</span>
                         </label>
-                    </div>
-                    {groupImageFiles && groupImageFiles.length > 0 && (
-                        <div className="mt-4 grid grid-cols-4 gap-2">
-                            {groupImageFiles.map((file, idx) => (
-                                <div key={idx} className="relative">
-                                    <img
-                                        src={URL.createObjectURL(file)}
-                                        alt={Group }
-                                        className="w-full h-24 object-cover rounded border"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            const newFiles = groupImageFiles.filter((_, i) => i !== idx);
-                                            setGroupImageFiles(newFiles);
-                                        }}
-                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
-                                    >
-                                        
-                                    </button>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition">
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={(e) => {
+                                    const files = Array.from(e.target.files);
+                                    setGroupImageFiles(files);
+                                }}
+                                className="hidden"
+                                id="group-image-upload"
+                            />
+                            <label htmlFor="group-image-upload" className="cursor-pointer">
+                                <div className="text-gray-600">
+                                    <p className="text-lg mb-2">📷 Click to upload images</p>
+                                    <p className="text-sm">Upload multiple images for Product Group</p>
                                 </div>
-                            ))}
+                            </label>
                         </div>
-                    )}
-                    <p className="text-sm text-gray-500 mt-2">
-                        Upload at least 1 image for the product group
-                    </p>
-                </div>                </div>
+                        {groupImageFiles && groupImageFiles.length > 0 && (
+                            <div className="mt-4 grid grid-cols-4 gap-2">
+                                {groupImageFiles.map((file, idx) => (
+                                    <div key={idx} className="relative">
+                                        <img
+                                            src={URL.createObjectURL(file)}
+                                            alt={`Group ${idx + 1}`}
+                                            className="w-full h-24 object-cover rounded border"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const newFiles = groupImageFiles.filter((_, i) => i !== idx);
+                                                setGroupImageFiles(newFiles);
+                                            }}
+                                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <p className="text-sm text-gray-500 mt-2">
+                            Upload at least 1 image for the product group
+                        </p>
+                    </div>
+                </div>
 
                 {/* Details (Rich Text Editor) */}
                 <div>
