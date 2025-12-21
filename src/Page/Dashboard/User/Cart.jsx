@@ -19,6 +19,7 @@ export default function Cart() {
   const [openModal, setOpenModal] = useState(false);
   const [deliveryFee, setDeliveryFee] = useState(80);
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const totalPricee = cart?.reduce(
@@ -54,6 +55,7 @@ export default function Cart() {
       variantName: cart.map(item => item.variant?.name || 'no-variant')
     };
 
+    setLoading(true);
     try {
       const res = await axiosPublic.post(`/cashOnDelivery/${user?.email || databaseUser?.email}`, order);
       if (res?.data?.orderResult?.insertedId) {
@@ -73,6 +75,8 @@ export default function Cart() {
         icon: "error",
         title: "Error during checkout",
       });
+    } finally {
+      setLoading(false);
     }
   };
 

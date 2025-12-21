@@ -2,6 +2,7 @@ import { useState } from "react";
 import PurchasedItems from "../User/PurchasedItems";
 import useAxiosPublic from "../../../Hooks/useAxiosPublic";
 import Swal from "sweetalert2";
+import { FaPhoneAlt, FaMapMarkerAlt, FaUser, FaTrash, FaBoxOpen } from "react-icons/fa";
 
 export default function Ordered({ order, refetch }) {
     const [loader, setLoader] = useState(false);
@@ -11,33 +12,33 @@ export default function Ordered({ order, refetch }) {
     const handleUpdateStatus = (id, status) => {
         setLoader(true);
         Swal.fire({
-            title: "Are You Sure?",
-            text: `You want to update status: "'${status}'"!`,
-            icon: "warning",
+            title: "Update Status?",
+            text: `Change status to: "${status}"?`,
+            icon: "question",
             showCancelButton: true,
             confirmButtonColor: "#3085d6",
             cancelButtonColor: "#f39a57",
-            confirmButtonText: "Update!"
+            confirmButtonText: "Yes, Update"
         }).then((result) => {
             if (result.isConfirmed) {
                 axiosPublic.patch(`/updateorder/${id}`, { status })
                     .then(res => {
                         if (res.data.modifiedCount > 0) {
                             Swal.fire({
-                                title: 'Success!',
-                                text: 'Status Updated Successfully',
+                                title: 'Updated!',
+                                text: 'Order status has been updated.',
                                 icon: 'success',
-                                confirmButtonText: 'Ok'
+                                timer: 1500,
+                                showConfirmButton: false
                             });
                             refetch();
                         }
                     })
                     .catch(error => {
                         Swal.fire({
-                            title: 'Warning!',
-                            text: `${error.message}`,
-                            icon: 'warning',
-                            confirmButtonText: 'Ok'
+                            title: 'Error',
+                            text: error.message,
+                            icon: 'error'
                         });
                     })
                     .finally(() => setLoader(false));
@@ -49,13 +50,13 @@ export default function Ordered({ order, refetch }) {
 
     const handleDelete = (id) => {
         Swal.fire({
-            title: "Are you sure?",
-            text: "You won't be able to revert this!",
+            title: "Delete Order?",
+            text: "This action cannot be undone!",
             icon: "warning",
             showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "Yes, delete it!"
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#3085d6",
+            confirmButtonText: "Yes, Delete"
         }).then((result) => {
             if (result.isConfirmed) {
                 axiosPublic.delete(`/deleteorder/${id}`)
@@ -63,8 +64,10 @@ export default function Ordered({ order, refetch }) {
                         if (res.data?.deletedCount) {
                             Swal.fire({
                                 title: "Deleted!",
-                                text: "Order has been deleted.",
-                                icon: "success"
+                                text: "Order has been removed.",
+                                icon: "success",
+                                timer: 1500,
+                                showConfirmButton: false
                             });
                             refetch();
                         }
@@ -73,35 +76,117 @@ export default function Ordered({ order, refetch }) {
         });
     };
 
+    // Date formatting helper
+    const formattedDate = order?.orderDate
+        ? `${order?.orderDay ? order.orderDay + ', ' : ''}${order.orderDate} ${order?.orderTime ? 'at ' + order.orderTime : ''}`
+        : new Date(order?.createdAt).toLocaleDateString("en-GB", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
     return (
-        <div className="p-2 w-full relative shadow-md rounded-lg mb-4">
-            <div className="space-y-1">
-                <h2 className="text-xl font-semibold mb-2">Order ID: <span className="text-[#C4ACC2]">{order?.orderId}</span></h2>
-                <h2 className="text-xl font-semibold mb-2">Items Total: {total} ৳</h2>
-                <h2 className="text-xl font-semibold mb-2">Delivery Fee: {order?.deliveryFee} ৳</h2>
-                <h2 className="text-xl font-semibold mb-2">Grand Total: {parseInt(total) + (order?.deliveryFee || 0)} ৳</h2>
-                <p>Buyer Name: <span className="font-bold">{order?.name}</span></p>
-                <p>Phone: <span className="font-bold">{order?.phone}</span></p>
-                <p>Address: <span className="font-bold">{order?.address}</span></p>
-                <p>Present Status: <span className="font-semibold text-green-600">{order?.status}</span></p>
-            </div>
-            <div className={`${(order?.status === "on the way" || order?.status === "delivered") ? "hidden" : "flex items-center space-x-2"}`}>
-                <p>Update Status:</p>
-                <button className="flex items-center font-semibold text-[#ffffff] hover:text-white bg-[#C4ACC2] px-3 py-1 border border-[#C4ACC2] rounded-md scale-100 hover:scale-110 duration-100">
-                    <span onClick={() => handleUpdateStatus(order?._id, order?.status === "pending" ? "confirmed" : "on the way")}>
-                        {loader || order?.status === "pending" ? "confirmed" : "on the way"}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6 transition hover:shadow-md">
+            {/* Header */}
+            <div className="bg-gray-50/50 px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center space-y-2 md:space-y-0 border-b border-gray-100">
+                <div>
+                    <div className="flex items-center space-x-3">
+                        <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-0.5 rounded uppercase tracking-wide">Order</span>
+                        <h2 className="text-lg font-bold text-gray-800">#{order?.orderId}</h2>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+                        <span className="font-medium">Placed:</span> {formattedDate}
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize
+                        ${order?.status === "pending" ? "bg-amber-100 text-amber-700" :
+                            order?.status === "on the way" ? "bg-purple-100 text-purple-700" :
+                                "bg-green-100 text-green-700"}`}>
+                        {order?.status}
                     </span>
-                    {
-                        loader && <p className="border-t rounded-xl border-black border-solid w-4 h-4 animate-spin"></p>
-                    }
-                </button>
+
+                    {order?.status === "pending" && (
+                        <button
+                            onClick={() => handleDelete(order?._id)}
+                            className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition"
+                            title="Delete Order"
+                        >
+                            <FaTrash size={14} />
+                        </button>
+                    )}
+                </div>
             </div>
-            <PurchasedItems orderId={order?.orderId} setTotal={setTotal} />
-            <button onClick={() => handleDelete(order?._id)} className={`w-6 mr-2 transform hover:text-red-500 hover:scale-110 absolute top-2 right-0 bg-gray-200 rounded-full ${order?.status === "pending" ? "block" : "hidden"}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
+
+            {/* Content */}
+            <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Customer Info */}
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Customer Details</h3>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3 text-gray-700">
+                                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                                    <FaUser size={12} />
+                                </div>
+                                <span className="font-medium">{order?.name}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-gray-700">
+                                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                                    <FaPhoneAlt size={12} />
+                                </div>
+                                <span className="font-medium">{order?.phone}</span>
+                            </div>
+                            <div className="flex items-start gap-3 text-gray-700">
+                                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 mt-0.5">
+                                    <FaMapMarkerAlt size={12} />
+                                </div>
+                                <span className="font-medium flex-1">{order?.address}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Order Financials */}
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Payment Summary</h3>
+                        <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                            <div className="flex justify-between text-sm text-gray-600">
+                                <span>Subtotal</span>
+                                <span>{total} ৳</span>
+                            </div>
+                            <div className="flex justify-between text-sm text-gray-600">
+                                <span>Delivery Fee</span>
+                                <span>{order?.deliveryFee} ৳</span>
+                            </div>
+                            <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between font-bold text-gray-800 text-lg">
+                                <span>Grand Total</span>
+                                <span>{parseInt(total) + (parseInt(order?.deliveryFee) || 0)} ৳</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Items List */}
+                <div className="mt-8">
+                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <FaBoxOpen /> Order Items
+                    </h3>
+                    <div className="bg-gray-50 rounded-lg border border-gray-100 p-1">
+                        <PurchasedItems orderId={order?.orderId} setTotal={setTotal} />
+                    </div>
+                </div>
+
+                {/* Action Bar */}
+                {(order?.status === "pending" || order?.status === "on the way") && (
+                    <div className="mt-6 flex justify-end border-t pt-4">
+                        <button
+                            className="flex items-center gap-2 bg-[#7d84d8] text-white px-5 py-2.5 rounded-lg font-medium hover:bg-[#5f65b8] transition shadow-sm disabled:opacity-70"
+                            onClick={() => handleUpdateStatus(order?._id, order?.status === "pending" ? "confirmed" : "on the way")}
+                            disabled={loader}
+                        >
+                            {loader && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            {order?.status === "pending" ? "Confirm Order" : "Mark as On The Way"}
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

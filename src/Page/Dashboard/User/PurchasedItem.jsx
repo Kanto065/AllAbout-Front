@@ -3,7 +3,7 @@ import useAxiosPublic from "../../../Hooks/useAxiosPublic";
 import PurchasedItems from "./PurchasedItems";
 import Swal from "sweetalert2";
 
-export default function PurchasedItem({order, refetch}) {
+export default function PurchasedItem({ order, refetch }) {
     const axiosPublic = useAxiosPublic();
     const [loader, setLoader] = useState(false);
     const [total, setTotal] = useState(0);
@@ -51,7 +51,14 @@ export default function PurchasedItem({order, refetch}) {
             className="bg-white shadow-lg rounded-lg p-6 border border-gray-200"
         >
             <h2 className="text-xl font-semibold mb-2">Order ID: {order?.orderId}</h2>
-            <h2 className="text-xl font-semibold mb-2">Total Price: {parseInt(total)+ order?.deliveryFee} ৳({order?.deliveryFee}Fee)</h2>
+            <p className="text-sm text-gray-500 mb-2 font-medium">
+                Placed on: {
+                    order?.orderDate
+                        ? `${order?.orderDay ? order.orderDay + ', ' : ''}${order.orderDate} ${order?.orderTime ? 'at ' + order.orderTime : ''}`
+                        : new Date(order?.createdAt).toLocaleDateString("en-GB", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                }
+            </p>
+            <h2 className="text-xl font-semibold mb-2">Total Price: {parseInt(total) + order?.deliveryFee} ৳({order?.deliveryFee}Fee)</h2>
             <h2 className="text-lg font-medium mb-2">Delivery Address: {order?.address}</h2>
             <p className={`text-lg font-medium mb-4 ${order?.status === "pending" ? "text-yellow-500" : "text-green-500"}`}>
                 Status: {order?.status}

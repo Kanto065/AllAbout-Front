@@ -522,8 +522,8 @@ const ProductDetails = () => {
   const isOrderQuantityZero = orderedQuantities[selectedColor] === 0;
 
   const settings = {
-    dots: true,
-    infinite: true,
+    dots: displayImages.length > 1,
+    infinite: displayImages.length > 1,
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
