@@ -194,9 +194,9 @@ export default function Cart() {
           <div className="flex justify-center mt-7">
             <button
               onClick={() => setOpenModal(totalPrice > 0 && true)}
-              disabled={cart.some((product) => product.orderedQuantity === 0) || totalPrice <= 0}
-              className={`text-white bg-[#8286bb] py-3 px-12 text-lg font-medium rounded-lg scale-100 hover:scale-110 duration-300 ${(cart.some((product) => product.orderedQuantity === 0) || totalPrice <= 0) &&
-                'cursor-not-allowed opacity-50'
+              disabled={cart.some((product) => product.orderedQuantity === 0 || product.quantity === 0 || product.orderedQuantity > product.quantity) || totalPrice <= 0}
+              className={`text-white bg-[#8286bb] py-3 px-12 text-lg font-medium rounded-lg scale-100 hover:scale-110 duration-300 ${(cart.some((product) => product.orderedQuantity === 0 || product.quantity === 0 || product.orderedQuantity > product.quantity) || totalPrice <= 0) &&
+                'cursor-not-allowed opacity-50 hover:scale-100'
                 }`}
             >
               Check Out

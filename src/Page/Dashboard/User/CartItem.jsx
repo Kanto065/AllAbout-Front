@@ -18,6 +18,7 @@ export default function CartItem({ product, reload, message, isGrouped }) {
   const handleQuantityChange = async (change) => {
     const newQuantity = quantity + change;
 
+    // ... (rest of function same, no changes needed)
     if (newQuantity < 1) {
       Swal.fire({
         icon: "error",
@@ -44,13 +45,6 @@ export default function CartItem({ product, reload, message, isGrouped }) {
     try {
       const response = await axiosPublic.patch(`/cart`, cart);
       if (response?.data?.modifiedCount > 0) {
-        // Swal.fire({
-        //   position: "top-right",
-        //   icon: "success",
-        //   title: "Cart updated",
-        //   showConfirmButton: false,
-        //   timer: 1000,
-        // });
         setQuantity(newQuantity);
         reload();
       }
@@ -137,8 +131,8 @@ export default function CartItem({ product, reload, message, isGrouped }) {
   const price = product.price - (product.price * product.discount / 100);
   const totalPrice = price * quantity;
 
-  // Out of stock message
-  if (message) {
+  // Out of stock (0 quantity) OR Admin Message
+  if (product.quantity === 0 || message) {
     return (
       <div className="relative bg-red-50 border border-red-200 rounded-lg p-3">
         <button
@@ -152,11 +146,17 @@ export default function CartItem({ product, reload, message, isGrouped }) {
           <img
             src={product?.images[0]}
             alt={product?.name}
-            className="w-20 h-20 object-cover rounded opacity-50"
+            className="w-20 h-20 object-cover rounded opacity-50 grayscale"
           />
           <div className="flex-1">
             <h3 className="font-semibold text-red-700 text-sm">{product?.name}</h3>
-            <p className="text-red-500 text-xs mt-1">{message}</p>
+            {product?.variant?.name && <p className="text-xs text-red-600">{product.variant.name}</p>}
+            <p className="text-red-500 text-xs mt-1 font-bold">
+              {product.quantity === 0 ? "OUT OF STOCK" : message}
+            </p>
+            {product.quantity === 0 && (
+              <p className="text-red-400 text-[10px] mt-0.5">Please remove to proceed</p>
+            )}
           </div>
         </div>
       </div>
@@ -193,6 +193,12 @@ export default function CartItem({ product, reload, message, isGrouped }) {
 
             {product?.variant?.name && (
               <p className="text-xs text-gray-600 mt-0.5">{product.variant.name}</p>
+            )}
+
+            {product.orderedQuantity > product.quantity && (
+              <div className="bg-red-50 text-red-600 text-xs px-2 py-1 rounded mt-1 border border-red-200 font-medium">
+                Stock Shortage: Only {product.quantity} available.
+              </div>
             )}
           </div>
 

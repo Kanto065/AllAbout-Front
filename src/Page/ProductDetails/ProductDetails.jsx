@@ -101,7 +101,22 @@ const ProductDetails = () => {
       });
 
       setCombinedImages(allImages);
-      setImageVariantMap(imageMap);
+
+      // Create a map of ImageURL -> VariantID
+      // This is safer than index-based mapping because displayImages creates a unique Set of images
+      // and potentially prepends groupImages, shifting indices.
+      const urlToVariantMap = {};
+      variants.forEach((variant) => {
+        variant.images?.forEach((img) => {
+          if (img) {
+            // specific, we map this image URL to this variant ID
+            // If multiple variants share an image, the last one overwrites. 
+            // Usually acceptable, or we could handle duplicates.
+            urlToVariantMap[img] = variant._id;
+          }
+        });
+      });
+      setImageVariantMap(urlToVariantMap);
     } else if (currentVariant) {
       // Single product or no variants
       setCombinedImages(currentVariant.images || []);
@@ -239,7 +254,9 @@ const ProductDetails = () => {
     setSelectedImageIndex(imageIndex);
 
     // Find and select the variant that owns this image
-    const variantId = imageVariantMap[imageIndex];
+    const imageUrl = displayImages[imageIndex];
+    const variantId = imageVariantMap[imageUrl];
+
     if (variantId) {
       const variant = variants.find(v => v._id === variantId);
       if (variant) {
@@ -641,7 +658,20 @@ const ProductDetails = () => {
               selectedVariant={currentVariant}
               onSelectVariant={(variant) => {
                 setCurrentVariant(variant);
-                setSelectedImageIndex(0);
+                if (variant?.images?.[0]) {
+                  const idx = displayImages.indexOf(variant.images[0]);
+                  if (idx >= 0) {
+                    setSelectedImageIndex(idx);
+                    sliderRef.current?.slickGoTo(idx);
+                  }
+                  else {
+                    setSelectedImageIndex(0);
+                    sliderRef.current?.slickGoTo(0);
+                  }
+                } else {
+                  setSelectedImageIndex(0);
+                  sliderRef.current?.slickGoTo(0);
+                }
                 setOrderQuantity(1);
               }}
               variantQuantities={variantQuantities}
@@ -783,13 +813,32 @@ const ProductDetails = () => {
           ) : hasVariants ? (
             <div className="mt-6 flex flex-col md:flex-row gap-4">
               {(() => {
-                const totalQuantity = Object.values(variantQuantities).reduce((a, b) => a + b, 0);
+                const items = Object.entries(variantQuantities)
+                  .filter(([_, qty]) => qty > 0)
+                  .map(([variantId, qty]) => {
+                    const variant = variants.find(v => v._id === variantId);
+                    return {
+                      productId: variantId,
+                      quantity: qty,
+                      variantName: variant?.name || displayData?.name,
+                      price: variant?.price || displayData?.price,
+                      discount: variant?.discount || displayData?.discount,
+                      image: variant?.images?.[0] || displayData?.images?.[0],
+                      code: "CODE" + (selectedImageIndex + 1)
+                    };
+                  });
+
+                const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0);
 
                 return (
                   <>
                     <SingleOrder
                       productName={displayData?.name}
-                      adiInfo={{ order: totalQuantity, selectedImageIndex }}
+                      adiInfo={{
+                        order: totalQuantity,
+                        selectedImageIndex,
+                        items: items
+                      }}
                     />
                     <button
                       onClick={handleMultiVariantCart}

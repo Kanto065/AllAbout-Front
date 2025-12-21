@@ -56,46 +56,56 @@ export default function Product({ product }) {
 
       {/* Product Details Section - Flex-grow to fill space */}
       <div className="p-1 md:p-2.5 text-center mt-1 flex flex-col flex-grow">
-        <h3 className="text-sm md:text-lg font-medium line-clamp-2 min-h-[2.5rem] -mt-1">
-          {product?.name}
+        {/* Product Name */}
+        <h3 className="text-sm md:text-lg font-medium line-clamp-2 group-hover:text-blue-600 transition">
+          {product?.productGroupId ? (product?.productGroupName || product?.name) : product?.name}
         </h3>
 
-        {/* Variant Indicator Badge - Fixed height container */}
-        <div className="flex justify-center mt-1 h-6">
+        {/* Variant Indicator Badge - Hidden for now as per design preference or keep subtle */}
+        <div className="flex justify-center mt-1">
           {product?.productGroupId && (
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+            <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
               </svg>
-              Multiple Variants
+              Product Group
             </span>
           )}
         </div>
 
-        <div className="flex items-center justify-center space-x-2">
-          <p>
-            <del
-              className={`text-xs md:text-base ${product?.discount <= 0 && "hidden"
-                }`}
-            >
-              ৳{product?.price}
-            </del>
-            <span className="text-green-500 text-sm md:text-lg font-semibold">
-              ৳
-              {parseInt(product?.price) -
-                (parseInt(product?.price) / 100) * product?.discount}
-            </span>
-          </p>
-          <p
-            className={`text-[#87C1D2] text-xs md:text-base ${product?.discount <= 0 && "hidden"
-              }`}
-          >
-            {product?.discount}% OFF
-          </p>
+        <div className="flex items-center justify-center space-x-2 mt-1">
+          {!product?.productGroupId ? (
+            <>
+              <p>
+                <del
+                  className={`text-xs md:text-base ${product?.discount <= 0 && "hidden"
+                    }`}
+                >
+                  ৳{product?.price}
+                </del>
+                <span className="text-green-500 text-sm md:text-lg font-semibold">
+                  ৳
+                  {parseInt(product?.price) -
+                    (parseInt(product?.price) / 100) * product?.discount}
+                </span>
+              </p>
+              <p
+                className={`text-[#87C1D2] text-xs md:text-base ${product?.discount <= 0 && "hidden"
+                  }`}
+              >
+                {product?.discount}% OFF
+              </p>
+            </>
+          ) : (
+            <p className="text-gray-500 text-xs md:text-sm font-medium italic">
+              View Price Options
+            </p>
+          )}
         </div>
 
-        {/* Color Variation Section */}
-        <div className="flex justify-center items-center space-x-2 mt-2">
+        {/* Color Variation Section / Mini Images */}
+        <div className="flex justify-center items-center space-x-2 mt-1">
+          {/* Only show old color circles if it's the old system or if explicitly available */}
           {product?.colors?.map((color, idx) => (
             <div
               key={idx}
@@ -113,16 +123,15 @@ export default function Product({ product }) {
 
         {/* Stock and Actions - Push to bottom */}
         <div className="mt-auto pt-2">
-          {product?.quantity < 1 ? (
-            <p className="text-xl font-semibold text-orange-500 py-2">Stock Out</p>
+          {product?.quantity < 1 && !product?.productGroupId ? (
+            <p className="text-xl font-semibold text-orange-500 py-1">Stock Out</p>
           ) : (
             <div className="flex justify-between px-1 pb-1">
               <Wish id={product?._id} />
               {(product?.productGroupId || (product?.variants && Object.keys(product.variants).length > 0)) ? (
-                <button onClick={handleCartClick}>
-                  <div className="bg-[#1E93D1] text-white rounded-full p-1 text-xl md:text-3xl">
-                    <IoMdAdd />
-                  </div>
+                <button onClick={handleCartClick} className="flex items-center gap-1 bg-[#1E93D1] text-white px-3 py-1 rounded-full hover:bg-blue-600 transition">
+                  <span className="text-xs md:text-sm font-medium">Details</span>
+                  <IoMdAdd className="text-lg" />
                 </button>
               ) : (
                 <button onClick={handleCartClick}>

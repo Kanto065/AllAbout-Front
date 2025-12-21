@@ -39,8 +39,12 @@ export default function Products() {
         // Filter out any duplicate products based on _id
         setShowProducts((prevProducts) => {
           const newProducts = res?.data || [];
+
+          // Filter to show only main products or standalone products
+          const filteredProducts = newProducts.filter(p => !p.productGroupId || p.isMainProduct);
+
           const existingIds = new Set(prevProducts.map(p => p._id));
-          const uniqueNewProducts = newProducts.filter(p => !existingIds.has(p._id));
+          const uniqueNewProducts = filteredProducts.filter(p => !existingIds.has(p._id));
           return [...prevProducts, ...uniqueNewProducts];
         });
       } catch (error) {

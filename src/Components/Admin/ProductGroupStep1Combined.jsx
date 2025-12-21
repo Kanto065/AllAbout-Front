@@ -112,7 +112,7 @@ export default function ProductGroupStep1Combined({
             // Only call API if in edit mode and variant has an ID
             if (isEditMode && variant._id) {
                 try {
-                    const response = await axiosPublic.delete(`/products/${variant._id}`);
+                    const response = await axiosPublic.delete(`/deleteProduct/${variant._id}`);
 
                     if (response.data.deletedCount > 0) {
                         // Remove from UI after successful deletion
