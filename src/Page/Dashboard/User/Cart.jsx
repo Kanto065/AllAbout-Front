@@ -44,7 +44,11 @@ export default function Cart() {
 
   const handleCheckOut = async (e) => {
     e.preventDefault();
+    if (loading) return;
+    setLoading(true);
+
     const form = e.target;
+    // ... validation ...
     const email = form?.email?.value || databaseUser?.email || user?.email;
     const order = {
       name: form?.name?.value || databaseUser?.name,
@@ -55,7 +59,6 @@ export default function Cart() {
       variantName: cart.map(item => item.variant?.name || 'no-variant')
     };
 
-    setLoading(true);
     try {
       const res = await axiosPublic.post(`/cashOnDelivery/${user?.email || databaseUser?.email}`, order);
       if (res?.data?.orderResult?.insertedId) {
